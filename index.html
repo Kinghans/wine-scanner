@@ -183,7 +183,7 @@
     .camera-container {
       position: relative;
       width: 100%;
-      aspect-ratio: 4/3;
+      height: 500px;
       background: #000;
       border-radius: 12px;
       overflow: hidden;
@@ -201,18 +201,39 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      border: 3px dashed white;
-      width: 80%;
-      height: 60%;
+      border: 3px dashed rgba(255, 255, 255, 0.8);
+      width: 70%;
+      height: 75%;
       border-radius: 12px;
       pointer-events: none;
     }
 
-    .capture-btn {
+    .camera-hint {
       position: absolute;
-      bottom: 20px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+      max-width: 80%;
+    }
+
+    .camera-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .capture-btn {
       width: 70px;
       height: 70px;
       border-radius: 50%;
@@ -220,10 +241,36 @@
       border: 4px solid #9333ea;
       cursor: pointer;
       transition: all 0.2s;
+      position: relative;
+    }
+
+    .capture-btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #9333ea;
     }
 
     .capture-btn:active {
-      transform: translateX(-50%) scale(0.9);
+      transform: scale(0.9);
+    }
+
+    .flip-camera-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     canvas {
@@ -260,6 +307,7 @@
       font-weight: 600;
       margin-bottom: 8px;
       color: #374151;
+      font-size: 14px;
     }
 
     input, textarea {
@@ -362,6 +410,36 @@
       transform: scale(1.1);
       box-shadow: 0 6px 16px rgba(147, 51, 234, 0.5);
     }
+
+    .file-input {
+      display: none;
+    }
+
+    .option-buttons {
+      display: flex;
+      gap: 12px;
+      flex-direction: column;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .skip-scan {
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .skip-scan button {
+      background: none;
+      border: none;
+      color: #9333ea;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -383,11 +461,27 @@
         <div class="wine-icon">🍷</div>
         <h2>Discover & Track Wines</h2>
         <p class="subtitle">Scan labels, save favorites, build your collection</p>
-        <button class="btn btn-primary" onclick="startCamera()">
-          <span>📷</span>
-          <span>Scan Wine Label</span>
-        </button>
-        <div style="height: 12px"></div>
+        
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="startCamera()">
+            <span>📷</span>
+            <span>Take Photo</span>
+          </button>
+          
+          <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+            <span>🖼️</span>
+            <span>Upload from Library</span>
+          </button>
+          
+          <button class="btn btn-secondary" onclick="manualEntry()">
+            <span>✍️</span>
+            <span>Enter Manually</span>
+          </button>
+        </div>
+        
+        <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event)">
+        
+        <div style="height: 24px"></div>
         <button class="btn btn-secondary" onclick="showCollection()">
           <span>🍷</span>
           <span id="collectionCount">My Collection (0)</span>
@@ -399,12 +493,20 @@
     <div id="cameraView" class="content hidden">
       <div class="card">
         <h2>Scan Wine Label</h2>
-        <p class="subtitle">Position the label in the frame</p>
+        <p class="subtitle">Center the label in the frame</p>
         <div class="camera-container">
           <video id="video" autoplay playsinline></video>
           <div class="camera-overlay"></div>
-          <button class="capture-btn" onclick="capturePhoto()"></button>
+          <div class="camera-hint">Position label vertically in frame</div>
+          <div class="camera-controls">
+            <button class="flip-camera-btn" onclick="flipCamera()">🔄</button>
+            <button class="capture-btn" onclick="capturePhoto()"></button>
+          </div>
         </div>
+        <div class="skip-scan">
+          <button onclick="manualEntry()">Skip scan and enter manually</button>
+        </div>
+        <div style="height: 12px"></div>
         <button class="btn btn-secondary" onclick="goHome()">Cancel</button>
       </div>
     </div>
@@ -414,7 +516,7 @@
       <div class="card processing">
         <div class="spinner"></div>
         <h2>Reading Label...</h2>
-        <p class="subtitle">Extracting wine information</p>
+        <p class="subtitle" id="processingStatus">Extracting wine information</p>
       </div>
     </div>
 
@@ -422,30 +524,42 @@
     <div id="resultView" class="content hidden">
       <div class="card">
         <img id="capturedImage" class="image-preview" alt="Wine label">
-        <h2>Detected Text</h2>
+        <h2>Wine Details</h2>
+        <p class="subtitle">Edit any fields as needed</p>
+        
         <div class="form-group">
-          <label>Wine Name</label>
-          <input type="text" id="wineName" placeholder="Enter wine name">
+          <label>Wine Name *</label>
+          <input type="text" id="wineName" placeholder="e.g., Château Margaux">
+          <div class="help-text">Required field</div>
         </div>
+        
         <div class="form-group">
           <label>Vintage Year</label>
-          <input type="number" id="wineVintage" placeholder="2020">
+          <input type="number" id="wineVintage" placeholder="e.g., 2018" min="1900" max="2025">
         </div>
+        
         <div class="form-group">
-          <label>Producer</label>
-          <input type="text" id="wineProducer" placeholder="Enter producer">
+          <label>Producer / Winery</label>
+          <input type="text" id="wineProducer" placeholder="e.g., Château Margaux">
         </div>
+        
         <div class="form-group">
-          <label>Region</label>
-          <input type="text" id="wineRegion" placeholder="Enter region">
+          <label>Region / Appellation</label>
+          <input type="text" id="wineRegion" placeholder="e.g., Bordeaux, France">
         </div>
+        
+        <div class="form-group">
+          <label>Varietal / Blend</label>
+          <input type="text" id="wineVarietal" placeholder="e.g., Cabernet Sauvignon">
+        </div>
+        
         <div class="btn-group">
           <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
             <span>💾</span>
             <span>Save to Collection</span>
           </button>
-          <button class="btn btn-secondary" onclick="startCamera()" style="flex: 1">
-            📷 Retry
+          <button class="btn btn-secondary" onclick="goHome()" style="flex: 1">
+            Cancel
           </button>
         </div>
       </div>
@@ -475,6 +589,7 @@
     let wines = JSON.parse(localStorage.getItem('wines') || '[]');
     let currentWineId = null;
     let stream = null;
+    let facingMode = 'environment';
 
     function showView(viewId) {
       ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
@@ -497,15 +612,23 @@
     async function startCamera() {
       showView('cameraView');
       try {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' },
+          video: { facingMode: facingMode },
           audio: false 
         });
         document.getElementById('video').srcObject = stream;
       } catch (err) {
-        alert('Camera access denied. Please enable camera permissions.');
+        alert('Camera access denied. Please enable camera permissions in your browser settings.');
         goHome();
       }
+    }
+
+    async function flipCamera() {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      await startCamera();
     }
 
     function capturePhoto() {
@@ -521,46 +644,103 @@
         stream = null;
       }
 
-      const imageData = canvas.toDataURL('image/jpeg');
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
       processImage(imageData);
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          processImage(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
     }
 
     async function processImage(imageData) {
       showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Analyzing image...';
       
       try {
+        document.getElementById('processingStatus').textContent = 'Reading text from label...';
+        
         const result = await Tesseract.recognize(imageData, 'eng', {
-          logger: m => console.log(m)
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const percent = Math.round(m.progress * 100);
+              document.getElementById('processingStatus').textContent = `Reading label... ${percent}%`;
+            }
+          }
         });
         
         const text = result.data.text;
         console.log('Detected text:', text);
         
-        // Simple parsing logic
-        const lines = text.split('\n').filter(l => l.trim());
-        const wineName = lines[0] || '';
-        const vintage = text.match(/\b(19|20)\d{2}\b/)?.[0] || '';
+        // Better parsing logic
+        const lines = text.split('\n')
+          .map(l => l.trim())
+          .filter(l => l.length > 2);
+        
+        // Try to find vintage year
+        const yearMatch = text.match(/\b(19[5-9]\d|20[0-2]\d)\b/);
+        const vintage = yearMatch ? yearMatch[0] : '';
+        
+        // First substantial line is usually the wine name
+        const wineName = lines.find(l => l.length > 3 && !/^\d+$/.test(l)) || '';
+        
+        // Try to find producer (often has "Château", "Domaine", "Estate", etc.)
+        const producerMatch = lines.find(l => 
+          /château|domaine|estate|winery|vineyard|bodega|casa/i.test(l)
+        );
         
         document.getElementById('capturedImage').src = imageData;
         document.getElementById('wineName').value = wineName;
         document.getElementById('wineVintage').value = vintage;
-        document.getElementById('wineProducer').value = lines[1] || '';
+        document.getElementById('wineProducer').value = producerMatch || (lines[1] || '');
         document.getElementById('wineRegion').value = '';
+        document.getElementById('wineVarietal').value = '';
         
         showView('resultView');
+        
+        // Show a helpful message if OCR didn't find much
+        if (!wineName && !vintage) {
+          alert('Having trouble reading the label? You can edit all fields manually or try taking another photo with better lighting.');
+        }
       } catch (err) {
-        alert('Error processing image. Please try again.');
-        goHome();
+        console.error('OCR Error:', err);
+        alert('Could not read the label. Please enter details manually.');
+        manualEntry();
       }
     }
 
+    function manualEntry() {
+      document.getElementById('capturedImage').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text></svg>';
+      document.getElementById('wineName').value = '';
+      document.getElementById('wineVintage').value = '';
+      document.getElementById('wineProducer').value = '';
+      document.getElementById('wineRegion').value = '';
+      document.getElementById('wineVarietal').value = '';
+      showView('resultView');
+    }
+
     function saveWine() {
+      const name = document.getElementById('wineName').value.trim();
+      
+      if (!name) {
+        alert('Please enter a wine name');
+        document.getElementById('wineName').focus();
+        return;
+      }
+      
       const wine = {
         id: Date.now(),
-        name: document.getElementById('wineName').value || 'Unknown Wine',
+        name: name,
         vintage: document.getElementById('wineVintage').value || '',
         producer: document.getElementById('wineProducer').value || '',
         region: document.getElementById('wineRegion').value || '',
+        varietal: document.getElementById('wineVarietal').value || '',
         rating: 0,
         notes: '',
         image: document.getElementById('capturedImage').src,
@@ -587,7 +767,9 @@
             <div class="wine-emoji">🍷</div>
             <div class="wine-info">
               <div class="wine-name">${wine.name}</div>
-              <div class="wine-meta">${wine.vintage} • ${wine.region || 'Unknown region'}</div>
+              <div class="wine-meta">
+                ${wine.vintage ? wine.vintage + ' • ' : ''}${wine.region || wine.producer || 'Unknown region'}
+              </div>
               <div class="stars">
                 ${[...Array(5)].map((_, i) => 
                   `<span class="star ${i >= wine.rating ? 'empty' : ''}">★</span>`
@@ -609,17 +791,22 @@
       card.innerHTML = `
         <img src="${wine.image}" class="image-preview" alt="Wine label">
         <h2>${wine.name}</h2>
-        <p class="subtitle">${wine.vintage}</p>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
         
-        <div class="form-group">
+        ${wine.producer ? `<div class="form-group">
           <label>Producer</label>
-          <div style="color: #6b7280">${wine.producer || 'Not specified'}</div>
-        </div>
+          <div style="color: #6b7280">${wine.producer}</div>
+        </div>` : ''}
         
-        <div class="form-group">
+        ${wine.region ? `<div class="form-group">
           <label>Region</label>
-          <div style="color: #6b7280">${wine.region || 'Not specified'}</div>
-        </div>
+          <div style="color: #6b7280">${wine.region}</div>
+        </div>` : ''}
+        
+        ${wine.varietal ? `<div class="form-group">
+          <label>Varietal</label>
+          <div style="color: #6b7280">${wine.varietal}</div>
+        </div>` : ''}
         
         <div class="form-group">
           <label>My Rating</label>
@@ -632,7 +819,7 @@
         
         <div class="form-group">
           <label>Tasting Notes</label>
-          <textarea id="wineNotes" placeholder="Add your tasting notes...">${wine.notes}</textarea>
+          <textarea id="wineNotes" placeholder="Add your tasting notes, food pairings, or memories...">${wine.notes}</textarea>
         </div>
         
         <div class="form-group">
