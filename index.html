@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#9333ea">
   <title>WineScan - Wine Collection Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -485,14 +484,9 @@
         <p class="subtitle">Scan labels, save favorites, build your collection</p>
         
         <div class="option-buttons">
-          <button class="btn btn-primary" onclick="startBarcodeScanner()">
-            <span>📊</span>
-            <span>Scan Barcode</span>
-          </button>
-          
-          <button class="btn btn-secondary" onclick="startCamera()">
+          <button class="btn btn-primary" onclick="startCamera()">
             <span>📷</span>
-            <span>Take Photo (OCR)</span>
+            <span>Take Photo</span>
           </button>
           
           <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
@@ -513,23 +507,6 @@
           <span>🍷</span>
           <span id="collectionCount">My Collection (0)</span>
         </button>
-      </div>
-    </div>
-
-    <!-- Barcode Scanner View -->
-    <div id="barcodeView" class="content hidden">
-      <div class="card">
-        <h2>Scan Barcode</h2>
-        <p class="subtitle">Position barcode horizontally in frame</p>
-        <div class="camera-container">
-          <div id="barcode-scanner"></div>
-          <div class="camera-hint" id="barcodeHint">Align barcode with red line</div>
-        </div>
-        <div class="skip-scan">
-          <button onclick="manualEntry()">Skip and enter manually</button>
-        </div>
-        <div style="height: 12px"></div>
-        <button class="btn btn-secondary" onclick="stopBarcodeScanner()">Cancel</button>
       </div>
     </div>
 
@@ -626,7 +603,7 @@
     </div>
 
     <!-- Floating Action Button -->
-    <button class="fab hidden" id="fab" onclick="startBarcodeScanner()">📊</button>
+    <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
   </div>
 
   <script>
@@ -634,16 +611,15 @@
     let currentWineId = null;
     let stream = null;
     let facingMode = 'environment';
-    let barcodeScanning = false;
 
     function showView(viewId) {
-      ['homeView', 'cameraView', 'barcodeView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
+      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(viewId).classList.remove('hidden');
       
       document.querySelector('.close-btn').classList.toggle('hidden', viewId === 'homeView');
-      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView' || viewId === 'barcodeView');
+      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView');
     }
 
     function goHome() {
@@ -651,117 +627,7 @@
         stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
-      stopBarcodeScanner();
       showView('homeView');
-    }
-
-    function startBarcodeScanner() {
-      showView('barcodeView');
-      barcodeScanning = true;
-      
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#barcode-scanner'),
-          constraints: {
-            facingMode: "environment"
-          }
-        },
-        decoder: {
-          readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader"]
-        },
-        locate: true
-      }, function(err) {
-        if (err) {
-          console.error(err);
-          alert('Could not access camera for barcode scanning. Please check camera permissions or try manual entry.');
-          goHome();
-          return;
-        }
-        Quagga.start();
-      });
-
-      Quagga.onDetected(function(result) {
-        if (!barcodeScanning) return;
-        
-        const code = result.codeResult.code;
-        console.log("Barcode detected:", code);
-        document.getElementById('barcodeHint').textContent = `Found: ${code} - Searching...`;
-        
-        // Prevent multiple scans
-        barcodeScanning = false;
-        
-        // Stop scanner and search for wine
-        setTimeout(() => {
-          stopBarcodeScanner();
-          searchWineByBarcode(code);
-        }, 500);
-      });
-    }
-
-    function stopBarcodeScanner() {
-      barcodeScanning = false;
-      try {
-        Quagga.stop();
-      } catch(e) {
-        // Quagga not running
-      }
-    }
-
-    async function searchWineByBarcode(barcode) {
-      showView('processingView');
-      document.getElementById('processingStatus').textContent = 'Searching wine database...';
-      
-      try {
-        // Try Open Food Facts API (free, has wine data)
-        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-        const data = await response.json();
-        
-        if (data.status === 1 && data.product) {
-          const product = data.product;
-          
-          // Extract wine information
-          const wineName = product.product_name || product.brands || '';
-          const vintage = (product.product_name || '').match(/\b(19[5-9]\d|20[0-2]\d)\b/)?.[0] || '';
-          
-          // Try to get product image or create placeholder
-          let imageUrl;
-          if (product.image_url) {
-            imageUrl = product.image_url;
-          } else {
-            imageUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text><text x="50%" y="65%" fill="white" font-size="14" text-anchor="middle" dy=".3em">Barcode: ${barcode}</text></svg>`;
-          }
-          
-          document.getElementById('capturedImage').src = imageUrl;
-          document.getElementById('wineName').value = wineName;
-          document.getElementById('wineVintage').value = vintage;
-          document.getElementById('wineProducer').value = product.brands || '';
-          document.getElementById('wineRegion').value = product.origins || '';
-          document.getElementById('wineVarietal').value = '';
-          
-          showView('resultView');
-        } else {
-          // No data found for this barcode
-          alert(`Barcode ${barcode} not found in wine database. Please enter the details manually.`);
-          
-          // Show form with barcode info
-          const placeholderImage = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text><text x="50%" y="65%" fill="white" font-size="14" text-anchor="middle" dy=".3em">Barcode: ${barcode}</text></svg>`;
-          
-          document.getElementById('capturedImage').src = placeholderImage;
-          document.getElementById('wineName').value = '';
-          document.getElementById('wineVintage').value = '';
-          document.getElementById('wineProducer').value = '';
-          document.getElementById('wineRegion').value = '';
-          document.getElementById('wineVarietal').value = '';
-          
-          showView('resultView');
-        }
-      } catch (error) {
-        console.error('Error searching barcode:', error);
-        alert('Could not search wine database. Please check your internet connection or enter details manually.');
-        manualEntry();
-      }
     }
 
     async function startCamera() {
