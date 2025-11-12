@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#9333ea">
+  <title>WineScan - Wine Collection Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #faf5ff 0%, #fce7f3 100%);
+      min-height: 100vh;
+      padding-bottom: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(147, 51, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #9333ea;
+      border: 2px solid #9333ea;
+    }
+
+    .btn-secondary:hover {
+      background: #faf5ff;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    .wine-icon {
+      font-size: 64px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: #1f2937;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+
+    .wine-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .wine-item {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .wine-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .wine-emoji {
+      font-size: 40px;
+    }
+
+    .wine-info {
+      flex: 1;
+    }
+
+    .wine-name {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .wine-meta {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .stars {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .star {
+      color: #fbbf24;
+      font-size: 16px;
+    }
+
+    .star.empty {
+      color: #d1d5db;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 3px dashed white;
+      width: 80%;
+      height: 60%;
+      border-radius: 12px;
+      pointer-events: none;
+    }
+
+    .capture-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: white;
+      border: 4px solid #9333ea;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .capture-btn:active {
+      transform: translateX(-50%) scale(0.9);
+    }
+
+    canvas {
+      max-width: 100%;
+      border-radius: 12px;
+    }
+
+    .processing {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #9333ea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #9333ea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .rating-input {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .rating-star {
+      font-size: 32px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .rating-star:hover {
+      transform: scale(1.2);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn-danger {
+      background: #fee;
+      color: #dc2626;
+      border: none;
+    }
+
+    .btn-danger:hover {
+      background: #fdd;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .image-preview {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+      color: white;
+      border: none;
+      font-size: 32px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(147, 51, 234, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <h1>
+          <span>🍷</span>
+          <span>WineScan</span>
+        </h1>
+        <button class="close-btn hidden" onclick="goHome()">×</button>
+      </div>
+    </div>
+
+    <!-- Home View -->
+    <div id="homeView" class="content">
+      <div class="card text-center">
+        <div class="wine-icon">🍷</div>
+        <h2>Discover & Track Wines</h2>
+        <p class="subtitle">Scan labels, save favorites, build your collection</p>
+        <button class="btn btn-primary" onclick="startCamera()">
+          <span>📷</span>
+          <span>Scan Wine Label</span>
+        </button>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="showCollection()">
+          <span>🍷</span>
+          <span id="collectionCount">My Collection (0)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Camera View -->
+    <div id="cameraView" class="content hidden">
+      <div class="card">
+        <h2>Scan Wine Label</h2>
+        <p class="subtitle">Position the label in the frame</p>
+        <div class="camera-container">
+          <video id="video" autoplay playsinline></video>
+          <div class="camera-overlay"></div>
+          <button class="capture-btn" onclick="capturePhoto()"></button>
+        </div>
+        <button class="btn btn-secondary" onclick="goHome()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Processing View -->
+    <div id="processingView" class="content hidden">
+      <div class="card processing">
+        <div class="spinner"></div>
+        <h2>Reading Label...</h2>
+        <p class="subtitle">Extracting wine information</p>
+      </div>
+    </div>
+
+    <!-- Result View -->
+    <div id="resultView" class="content hidden">
+      <div class="card">
+        <img id="capturedImage" class="image-preview" alt="Wine label">
+        <h2>Detected Text</h2>
+        <div class="form-group">
+          <label>Wine Name</label>
+          <input type="text" id="wineName" placeholder="Enter wine name">
+        </div>
+        <div class="form-group">
+          <label>Vintage Year</label>
+          <input type="number" id="wineVintage" placeholder="2020">
+        </div>
+        <div class="form-group">
+          <label>Producer</label>
+          <input type="text" id="wineProducer" placeholder="Enter producer">
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <input type="text" id="wineRegion" placeholder="Enter region">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
+            <span>💾</span>
+            <span>Save to Collection</span>
+          </button>
+          <button class="btn btn-secondary" onclick="startCamera()" style="flex: 1">
+            📷 Retry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection View -->
+    <div id="collectionView" class="content hidden">
+      <h2 style="margin-bottom: 16px; color: #1f2937;">My Wines</h2>
+      <div id="wineList" class="wine-list"></div>
+      <div id="emptyState" class="card text-center hidden">
+        <div class="wine-icon">🍷</div>
+        <h2>No wines yet</h2>
+        <p class="subtitle">Start scanning to build your collection!</p>
+      </div>
+    </div>
+
+    <!-- Detail View -->
+    <div id="detailView" class="content hidden">
+      <div class="card" id="detailCard"></div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
+  </div>
+
+  <script>
+    let wines = JSON.parse(localStorage.getItem('wines') || '[]');
+    let currentWineId = null;
+    let stream = null;
+
+    function showView(viewId) {
+      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(viewId).classList.remove('hidden');
+      
+      document.querySelector('.close-btn').classList.toggle('hidden', viewId === 'homeView');
+      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView');
+    }
+
+    function goHome() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      showView('homeView');
+    }
+
+    async function startCamera() {
+      showView('cameraView');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' },
+          audio: false 
+        });
+        document.getElementById('video').srcObject = stream;
+      } catch (err) {
+        alert('Camera access denied. Please enable camera permissions.');
+        goHome();
+      }
+    }
+
+    function capturePhoto() {
+      const video = document.getElementById('video');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+
+      const imageData = canvas.toDataURL('image/jpeg');
+      processImage(imageData);
+    }
+
+    async function processImage(imageData) {
+      showView('processingView');
+      
+      try {
+        const result = await Tesseract.recognize(imageData, 'eng', {
+          logger: m => console.log(m)
+        });
+        
+        const text = result.data.text;
+        console.log('Detected text:', text);
+        
+        // Simple parsing logic
+        const lines = text.split('\n').filter(l => l.trim());
+        const wineName = lines[0] || '';
+        const vintage = text.match(/\b(19|20)\d{2}\b/)?.[0] || '';
+        
+        document.getElementById('capturedImage').src = imageData;
+        document.getElementById('wineName').value = wineName;
+        document.getElementById('wineVintage').value = vintage;
+        document.getElementById('wineProducer').value = lines[1] || '';
+        document.getElementById('wineRegion').value = '';
+        
+        showView('resultView');
+      } catch (err) {
+        alert('Error processing image. Please try again.');
+        goHome();
+      }
+    }
+
+    function saveWine() {
+      const wine = {
+        id: Date.now(),
+        name: document.getElementById('wineName').value || 'Unknown Wine',
+        vintage: document.getElementById('wineVintage').value || '',
+        producer: document.getElementById('wineProducer').value || '',
+        region: document.getElementById('wineRegion').value || '',
+        rating: 0,
+        notes: '',
+        image: document.getElementById('capturedImage').src,
+        dateAdded: new Date().toISOString().split('T')[0]
+      };
+      
+      wines.unshift(wine);
+      localStorage.setItem('wines', JSON.stringify(wines));
+      updateCollectionCount();
+      showCollection();
+    }
+
+    function showCollection() {
+      const list = document.getElementById('wineList');
+      const empty = document.getElementById('emptyState');
+      
+      if (wines.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+      } else {
+        empty.classList.add('hidden');
+        list.innerHTML = wines.map(wine => `
+          <div class="wine-item" onclick="showDetail(${wine.id})">
+            <div class="wine-emoji">🍷</div>
+            <div class="wine-info">
+              <div class="wine-name">${wine.name}</div>
+              <div class="wine-meta">${wine.vintage} • ${wine.region || 'Unknown region'}</div>
+              <div class="stars">
+                ${[...Array(5)].map((_, i) => 
+                  `<span class="star ${i >= wine.rating ? 'empty' : ''}">★</span>`
+                ).join('')}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      showView('collectionView');
+    }
+
+    function showDetail(id) {
+      const wine = wines.find(w => w.id === id);
+      currentWineId = id;
+      
+      const card = document.getElementById('detailCard');
+      card.innerHTML = `
+        <img src="${wine.image}" class="image-preview" alt="Wine label">
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage}</p>
+        
+        <div class="form-group">
+          <label>Producer</label>
+          <div style="color: #6b7280">${wine.producer || 'Not specified'}</div>
+        </div>
+        
+        <div class="form-group">
+          <label>Region</label>
+          <div style="color: #6b7280">${wine.region || 'Not specified'}</div>
+        </div>
+        
+        <div class="form-group">
+          <label>My Rating</label>
+          <div class="rating-input">
+            ${[...Array(5)].map((_, i) => 
+              `<span class="rating-star ${i >= wine.rating ? 'empty' : ''}" onclick="updateRating(${i + 1})">★</span>`
+            ).join('')}
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Tasting Notes</label>
+          <textarea id="wineNotes" placeholder="Add your tasting notes...">${wine.notes}</textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Date Added</label>
+          <div style="color: #6b7280">${wine.dateAdded}</div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveNotes()">
+            <span>💾</span>
+            <span>Save Notes</span>
+          </button>
+          <button class="btn btn-danger" onclick="deleteWine()">
+            🗑️ Delete
+          </button>
+        </div>
+      `;
+      
+      showView('detailView');
+    }
+
+    function updateRating(rating) {
+      const wine = wines.find(w => w.id === currentWineId);
+      wine.rating = rating;
+      localStorage.setItem('wines', JSON.stringify(wines));
+      showDetail(currentWineId);
+    }
+
+    function saveNotes() {
+      const wine = wines.find(w => w.id === currentWineId);
+      wine.notes = document.getElementById('wineNotes').value;
+      localStorage.setItem('wines', JSON.stringify(wines));
+      alert('Notes saved!');
+    }
+
+    function deleteWine() {
+      if (confirm('Delete this wine from your collection?')) {
+        wines = wines.filter(w => w.id !== currentWineId);
+        localStorage.setItem('wines', JSON.stringify(wines));
+        updateCollectionCount();
+        showCollection();
+      }
+    }
+
+    function updateCollectionCount() {
+      document.getElementById('collectionCount').textContent = `My Collection (${wines.length})`;
+    }
+
+    // Initialize
+    updateCollectionCount();
+  </script>
+</body>
+</html>
