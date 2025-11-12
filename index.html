@@ -197,6 +197,25 @@
       object-fit: cover;
     }
 
+    #barcode-scanner {
+      width: 100%;
+      height: 100%;
+    }
+
+    #barcode-scanner video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #barcode-scanner canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
     .camera-overlay {
       position: absolute;
       top: 50%;
@@ -221,6 +240,7 @@
       font-size: 14px;
       text-align: center;
       max-width: 80%;
+      z-index: 10;
     }
 
     .camera-controls {
@@ -232,6 +252,7 @@
       justify-content: center;
       align-items: center;
       gap: 20px;
+      z-index: 10;
     }
 
     .capture-btn {
@@ -464,9 +485,14 @@
         <p class="subtitle">Scan labels, save favorites, build your collection</p>
         
         <div class="option-buttons">
-          <button class="btn btn-primary" onclick="startCamera()">
+          <button class="btn btn-primary" onclick="startBarcodeScanner()">
+            <span>📊</span>
+            <span>Scan Barcode</span>
+          </button>
+          
+          <button class="btn btn-secondary" onclick="startCamera()">
             <span>📷</span>
-            <span>Take Photo</span>
+            <span>Take Photo (OCR)</span>
           </button>
           
           <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
@@ -487,6 +513,23 @@
           <span>🍷</span>
           <span id="collectionCount">My Collection (0)</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Barcode Scanner View -->
+    <div id="barcodeView" class="content hidden">
+      <div class="card">
+        <h2>Scan Barcode</h2>
+        <p class="subtitle">Position barcode horizontally in frame</p>
+        <div class="camera-container">
+          <div id="barcode-scanner"></div>
+          <div class="camera-hint" id="barcodeHint">Align barcode with red line</div>
+        </div>
+        <div class="skip-scan">
+          <button onclick="manualEntry()">Skip and enter manually</button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="stopBarcodeScanner()">Cancel</button>
       </div>
     </div>
 
@@ -516,7 +559,7 @@
     <div id="processingView" class="content hidden">
       <div class="card processing">
         <div class="spinner"></div>
-        <h2>Reading Label...</h2>
+        <h2>Processing...</h2>
         <p class="subtitle" id="processingStatus">Extracting wine information</p>
       </div>
     </div>
@@ -583,7 +626,7 @@
     </div>
 
     <!-- Floating Action Button -->
-    <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
+    <button class="fab hidden" id="fab" onclick="startBarcodeScanner()">📊</button>
   </div>
 
   <script>
@@ -591,15 +634,16 @@
     let currentWineId = null;
     let stream = null;
     let facingMode = 'environment';
+    let barcodeScanning = false;
 
     function showView(viewId) {
-      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
+      ['homeView', 'cameraView', 'barcodeView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(viewId).classList.remove('hidden');
       
       document.querySelector('.close-btn').classList.toggle('hidden', viewId === 'homeView');
-      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView');
+      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView' || viewId === 'barcodeView');
     }
 
     function goHome() {
@@ -607,7 +651,117 @@
         stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
+      stopBarcodeScanner();
       showView('homeView');
+    }
+
+    function startBarcodeScanner() {
+      showView('barcodeView');
+      barcodeScanning = true;
+      
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#barcode-scanner'),
+          constraints: {
+            facingMode: "environment"
+          }
+        },
+        decoder: {
+          readers: ["ean_reader", "ean_8_reader", "upc_reader", "upc_e_reader", "code_128_reader"]
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          console.error(err);
+          alert('Could not access camera for barcode scanning. Please check camera permissions or try manual entry.');
+          goHome();
+          return;
+        }
+        Quagga.start();
+      });
+
+      Quagga.onDetected(function(result) {
+        if (!barcodeScanning) return;
+        
+        const code = result.codeResult.code;
+        console.log("Barcode detected:", code);
+        document.getElementById('barcodeHint').textContent = `Found: ${code} - Searching...`;
+        
+        // Prevent multiple scans
+        barcodeScanning = false;
+        
+        // Stop scanner and search for wine
+        setTimeout(() => {
+          stopBarcodeScanner();
+          searchWineByBarcode(code);
+        }, 500);
+      });
+    }
+
+    function stopBarcodeScanner() {
+      barcodeScanning = false;
+      try {
+        Quagga.stop();
+      } catch(e) {
+        // Quagga not running
+      }
+    }
+
+    async function searchWineByBarcode(barcode) {
+      showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Searching wine database...';
+      
+      try {
+        // Try Open Food Facts API (free, has wine data)
+        const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+        const data = await response.json();
+        
+        if (data.status === 1 && data.product) {
+          const product = data.product;
+          
+          // Extract wine information
+          const wineName = product.product_name || product.brands || '';
+          const vintage = (product.product_name || '').match(/\b(19[5-9]\d|20[0-2]\d)\b/)?.[0] || '';
+          
+          // Try to get product image or create placeholder
+          let imageUrl;
+          if (product.image_url) {
+            imageUrl = product.image_url;
+          } else {
+            imageUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text><text x="50%" y="65%" fill="white" font-size="14" text-anchor="middle" dy=".3em">Barcode: ${barcode}</text></svg>`;
+          }
+          
+          document.getElementById('capturedImage').src = imageUrl;
+          document.getElementById('wineName').value = wineName;
+          document.getElementById('wineVintage').value = vintage;
+          document.getElementById('wineProducer').value = product.brands || '';
+          document.getElementById('wineRegion').value = product.origins || '';
+          document.getElementById('wineVarietal').value = '';
+          
+          showView('resultView');
+        } else {
+          // No data found for this barcode
+          alert(`Barcode ${barcode} not found in wine database. Please enter the details manually.`);
+          
+          // Show form with barcode info
+          const placeholderImage = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="40%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text><text x="50%" y="65%" fill="white" font-size="14" text-anchor="middle" dy=".3em">Barcode: ${barcode}</text></svg>`;
+          
+          document.getElementById('capturedImage').src = placeholderImage;
+          document.getElementById('wineName').value = '';
+          document.getElementById('wineVintage').value = '';
+          document.getElementById('wineProducer').value = '';
+          document.getElementById('wineRegion').value = '';
+          document.getElementById('wineVarietal').value = '';
+          
+          showView('resultView');
+        }
+      } catch (error) {
+        console.error('Error searching barcode:', error);
+        alert('Could not search wine database. Please check your internet connection or enter details manually.');
+        manualEntry();
+      }
     }
 
     async function startCamera() {
@@ -750,127 +904,3 @@
       
       wines.unshift(wine);
       localStorage.setItem('wines', JSON.stringify(wines));
-      updateCollectionCount();
-      showCollection();
-    }
-
-    function showCollection() {
-      const list = document.getElementById('wineList');
-      const empty = document.getElementById('emptyState');
-      
-      if (wines.length === 0) {
-        list.innerHTML = '';
-        empty.classList.remove('hidden');
-      } else {
-        empty.classList.add('hidden');
-        list.innerHTML = wines.map(wine => `
-          <div class="wine-item" onclick="showDetail(${wine.id})">
-            <div class="wine-emoji">🍷</div>
-            <div class="wine-info">
-              <div class="wine-name">${wine.name}</div>
-              <div class="wine-meta">
-                ${wine.vintage ? wine.vintage + ' • ' : ''}${wine.region || wine.producer || 'Unknown region'}
-              </div>
-              <div class="stars">
-                ${[...Array(5)].map((_, i) => 
-                  `<span class="star ${i >= wine.rating ? 'empty' : ''}">★</span>`
-                ).join('')}
-              </div>
-            </div>
-          </div>
-        `).join('');
-      }
-      
-      showView('collectionView');
-    }
-
-    function showDetail(id) {
-      const wine = wines.find(w => w.id === id);
-      currentWineId = id;
-      
-      const card = document.getElementById('detailCard');
-      card.innerHTML = `
-        <img src="${wine.image}" class="image-preview" alt="Wine label">
-        <h2>${wine.name}</h2>
-        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
-        
-        ${wine.producer ? `<div class="form-group">
-          <label>Producer</label>
-          <div style="color: #6b7280">${wine.producer}</div>
-        </div>` : ''}
-        
-        ${wine.region ? `<div class="form-group">
-          <label>Region</label>
-          <div style="color: #6b7280">${wine.region}</div>
-        </div>` : ''}
-        
-        ${wine.varietal ? `<div class="form-group">
-          <label>Varietal</label>
-          <div style="color: #6b7280">${wine.varietal}</div>
-        </div>` : ''}
-        
-        <div class="form-group">
-          <label>My Rating</label>
-          <div class="rating-input">
-            ${[...Array(5)].map((_, i) => 
-              `<span class="rating-star ${i >= wine.rating ? 'empty' : ''}" onclick="updateRating(${i + 1})">★</span>`
-            ).join('')}
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label>Tasting Notes</label>
-          <textarea id="wineNotes" placeholder="Add your tasting notes, food pairings, or memories...">${wine.notes}</textarea>
-        </div>
-        
-        <div class="form-group">
-          <label>Date Added</label>
-          <div style="color: #6b7280">${wine.dateAdded}</div>
-        </div>
-        
-        <div class="btn-group">
-          <button class="btn btn-primary" onclick="saveNotes()">
-            <span>💾</span>
-            <span>Save Notes</span>
-          </button>
-          <button class="btn btn-danger" onclick="deleteWine()">
-            🗑️ Delete
-          </button>
-        </div>
-      `;
-      
-      showView('detailView');
-    }
-
-    function updateRating(rating) {
-      const wine = wines.find(w => w.id === currentWineId);
-      wine.rating = rating;
-      localStorage.setItem('wines', JSON.stringify(wines));
-      showDetail(currentWineId);
-    }
-
-    function saveNotes() {
-      const wine = wines.find(w => w.id === currentWineId);
-      wine.notes = document.getElementById('wineNotes').value;
-      localStorage.setItem('wines', JSON.stringify(wines));
-      alert('Notes saved!');
-    }
-
-    function deleteWine() {
-      if (confirm('Delete this wine from your collection?')) {
-        wines = wines.filter(w => w.id !== currentWineId);
-        localStorage.setItem('wines', JSON.stringify(wines));
-        updateCollectionCount();
-        showCollection();
-      }
-    }
-
-    function updateCollectionCount() {
-      document.getElementById('collectionCount').textContent = `My Collection (${wines.length})`;
-    }
-
-    // Initialize
-    updateCollectionCount();
-  </script>
-</body>
-</html>
