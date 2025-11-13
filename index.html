@@ -389,19 +389,15 @@
     <div id="learnOptionsView" class="content hidden">
       <div class="card text-center">
         <h2>Learn About a Wine</h2>
-        <p class="subtitle">Scan or search for wine information</p>
+        <p class="subtitle">Get detailed information about any wine</p>
         <div class="option-buttons">
           <button class="btn btn-primary" onclick="startCamera('learn')">
             <span>📷</span><span>Scan Wine Label</span>
-          </button>
-          <button class="btn btn-secondary" onclick="document.getElementById('learnFileInput').click()">
-            <span>🖼️</span><span>Upload Photo</span>
           </button>
           <button class="btn btn-secondary" onclick="searchWineManually()">
             <span>🔎</span><span>Search by Name</span>
           </button>
         </div>
-        <input type="file" id="learnFileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event, 'learn')">
         <div style="height: 12px"></div>
         <button class="btn btn-secondary" onclick="goHome()">Back</button>
       </div>
@@ -676,8 +672,68 @@
 
     async function processImage(img) {
       showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Analyzing wine label...';
+      
       const c = document.getElementById('imageContainer');
       c.innerHTML = `<img src="${img}" class="image-preview">`;
+      
+      // Try to use AI if API key is available
+      const apiKey = localStorage.getItem('openai_key');
+      if (apiKey) {
+        try {
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + apiKey
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "image_url", image_url: { url: img } },
+                  { 
+                    type: "text", 
+                    text: `Analyze this wine label and extract the following information. Return ONLY a JSON object:
+
+{
+  "name": "full wine name",
+  "vintage": "year only (e.g., 2018)",
+  "producer": "winery or château name",
+  "region": "region and country (e.g., Bordeaux, France)",
+  "varietal": "grape variety or blend type"
+}
+
+Be precise and only include information clearly visible on the label.`
+                  }
+                ]
+              }],
+              max_tokens: 500
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            let text = data.choices[0].message.content.trim();
+            text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const wineData = JSON.parse(text);
+            
+            document.getElementById('wineName').value = wineData.name || '';
+            document.getElementById('wineVintage').value = wineData.vintage || '';
+            document.getElementById('wineProducer').value = wineData.producer || '';
+            document.getElementById('wineRegion').value = wineData.region || '';
+            document.getElementById('wineVarietal').value = wineData.varietal || '';
+            
+            showView('resultView');
+            return;
+          }
+        } catch (err) {
+          console.error('AI extraction failed:', err);
+        }
+      }
+      
+      // Fallback: manual entry
       document.getElementById('wineName').value = '';
       document.getElementById('wineVintage').value = '';
       document.getElementById('wineProducer').value = '';
