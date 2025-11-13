@@ -349,9 +349,28 @@
       <div class="card text-center">
         <div class="wine-icon">🍷</div>
         <h2>Discover & Track Wines</h2>
-        <p class="subtitle">Scan labels, save favorites, build your collection</p>
+        <p class="subtitle">Build your collection or learn about new wines</p>
         <div class="option-buttons">
-          <button class="btn btn-primary" onclick="startCamera()">
+          <button class="btn btn-primary" onclick="showAddOptions()">
+            <span>➕</span><span>Add Wine to Collection</span>
+          </button>
+          <button class="btn btn-secondary" onclick="showLearnOptions()">
+            <span>🔍</span><span>Learn About a Wine</span>
+          </button>
+        </div>
+        <div style="height: 24px"></div>
+        <button class="btn btn-secondary" onclick="showCollection()">
+          <span>🍷</span><span id="collectionCount">My Collection (0)</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="addOptionsView" class="content hidden">
+      <div class="card text-center">
+        <h2>Add Wine to Collection</h2>
+        <p class="subtitle">How would you like to add this wine?</p>
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="startCamera('add')">
             <span>📷</span><span>Take Photo</span>
           </button>
           <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
@@ -361,11 +380,30 @@
             <span>✍️</span><span>Enter Manually</span>
           </button>
         </div>
-        <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event)">
-        <div style="height: 24px"></div>
-        <button class="btn btn-secondary" onclick="showCollection()">
-          <span>🍷</span><span id="collectionCount">My Collection (0)</span>
-        </button>
+        <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event, 'add')">
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="goHome()">Back</button>
+      </div>
+    </div>
+
+    <div id="learnOptionsView" class="content hidden">
+      <div class="card text-center">
+        <h2>Learn About a Wine</h2>
+        <p class="subtitle">Scan or search for wine information</p>
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="startCamera('learn')">
+            <span>📷</span><span>Scan Wine Label</span>
+          </button>
+          <button class="btn btn-secondary" onclick="document.getElementById('learnFileInput').click()">
+            <span>🖼️</span><span>Upload Photo</span>
+          </button>
+          <button class="btn btn-secondary" onclick="searchWineManually()">
+            <span>🔎</span><span>Search by Name</span>
+          </button>
+        </div>
+        <input type="file" id="learnFileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event, 'learn')">
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="goHome()">Back</button>
       </div>
     </div>
 
@@ -494,7 +532,44 @@
       </div>
     </div>
 
-    <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
+    <div id="learnResultView" class="content hidden">
+      <div class="card">
+        <div id="learnImageContainer"></div>
+        <h2 id="learnWineName">Wine Name</h2>
+        <div id="learnWineInfo"></div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addLearnedWineToCollection()">
+            <span>➕</span><span>Add to My Collection</span>
+          </button>
+          <button class="btn btn-secondary" onclick="showLearnOptions()">
+            Search Another
+          </button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="goHome()">Back to Home</button>
+      </div>
+    </div>
+
+    <div id="searchView" class="content hidden">
+      <div class="card">
+        <h2>Search Wine</h2>
+        <p class="subtitle">Enter the wine name to search</p>
+        <div class="form-group">
+          <label>Wine Name</label>
+          <input type="text" id="searchWineName" placeholder="e.g., Château Margaux 2015">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="searchWineByName()">
+            <span>🔍</span><span>Search</span>
+          </button>
+          <button class="btn btn-secondary" onclick="showLearnOptions()">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button class="fab hidden" id="fab" onclick="showAddOptions()">➕</button>
   </div>
 
   <script>
@@ -504,6 +579,8 @@
     let facingMode = 'environment';
     let currentComparison = null;
     let currentImageData = null;
+    let currentMode = 'add'; // 'add' or 'learn'
+    let learnedWineData = null;
 
     function isValidImage(img) {
       return img && typeof img === 'string' && img.startsWith('data:image/') && img.length > 100;
@@ -514,10 +591,31 @@
     localStorage.setItem('wines', JSON.stringify(wines));
 
     function showView(v) {
-      ['homeView','cameraView','processingView','resultView','collectionView','detailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['homeView','addOptionsView','learnOptionsView','cameraView','processingView','resultView','learnResultView','searchView','collectionView','detailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
       document.querySelector('.close-btn').classList.toggle('hidden', v === 'homeView');
       document.getElementById('fab').classList.toggle('hidden', v === 'homeView' || v === 'cameraView');
+    }
+
+    function showAddOptions() {
+      showView('addOptionsView');
+    }
+
+    function showLearnOptions() {
+      showView('learnOptionsView');
+    }
+
+    async function startCamera(mode) {
+      currentMode = mode || 'add';
+      showView('cameraView');
+      try {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({video: {facingMode}, audio: false});
+        document.getElementById('video').srcObject = stream;
+      } catch (err) {
+        alert('Camera access denied');
+        goHome();
+      }
     }
 
     function goHome() {
@@ -551,14 +649,27 @@
       c.getContext('2d').drawImage(v, 0, 0);
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
       currentImageData = c.toDataURL('image/jpeg', 0.9);
-      processImage(currentImageData);
+      
+      if (currentMode === 'learn') {
+        learnAboutWine(currentImageData);
+      } else {
+        processImage(currentImageData);
+      }
     }
 
-    function handleFileUpload(e) {
+    function handleFileUpload(e, mode) {
+      currentMode = mode || 'add';
       const f = e.target.files[0];
       if (f) {
         const r = new FileReader();
-        r.onload = e => { currentImageData = e.target.result; processImage(e.target.result); };
+        r.onload = e => { 
+          currentImageData = e.target.result;
+          if (currentMode === 'learn') {
+            learnAboutWine(e.target.result);
+          } else {
+            processImage(e.target.result);
+          }
+        };
         r.readAsDataURL(f);
       }
     }
@@ -878,6 +989,237 @@
       const w = wines.find(x => x.id === currentWineId);
       if (w.score !== null) alert(`Ranked! Your wine scored ${w.score.toFixed(1)}/10`);
       showCollection();
+    }
+
+    // Learn mode functions
+    async function learnAboutWine(imageData) {
+      showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Analyzing wine with AI...';
+      
+      try {
+        const apiKey = localStorage.getItem('openai_key');
+        if (!apiKey) {
+          alert('Please add your OpenAI API key in Settings to use AI wine recognition.');
+          showSettings();
+          return;
+        }
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: imageData } },
+                { 
+                  type: "text", 
+                  text: `Analyze this wine label and provide detailed information. Return ONLY a JSON object:
+
+{
+  "name": "full wine name",
+  "vintage": "year",
+  "producer": "winery name",
+  "region": "region and country",
+  "varietal": "grape varieties",
+  "type": "Red/White/Rosé/Sparkling/Dessert",
+  "tastingNotes": "detailed tasting profile with flavors and aromas",
+  "foodPairings": "recommended food pairings",
+  "price": "typical price range if known",
+  "description": "2-3 sentence overview of this wine"
+}
+
+Be detailed and informative. If any field is unknown, use empty string.`
+                }
+              ]
+            }],
+            max_tokens: 1000
+          })
+        });
+
+        if (!response.ok) throw new Error('API request failed');
+
+        const data = await response.json();
+        let text = data.choices[0].message.content.trim();
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        learnedWineData = JSON.parse(text);
+        learnedWineData.image = imageData;
+        displayLearnedWine();
+        
+      } catch (err) {
+        console.error('Learn error:', err);
+        alert('Could not analyze wine. Please try again or check your API key.');
+        showLearnOptions();
+      }
+    }
+
+    function searchWineManually() {
+      showView('searchView');
+    }
+
+    async function searchWineByName() {
+      const name = document.getElementById('searchWineName').value.trim();
+      if (!name) {
+        alert('Please enter a wine name');
+        return;
+      }
+
+      showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Searching for wine information...';
+
+      try {
+        const apiKey = localStorage.getItem('openai_key');
+        if (!apiKey) {
+          alert('Please add your OpenAI API key in Settings.');
+          showSettings();
+          return;
+        }
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{
+              role: "user",
+              content: `Provide detailed information about the wine: "${name}". Return ONLY a JSON object:
+
+{
+  "name": "full wine name",
+  "vintage": "year if specified",
+  "producer": "winery name",
+  "region": "region and country",
+  "varietal": "grape varieties",
+  "type": "Red/White/Rosé/Sparkling/Dessert",
+  "tastingNotes": "detailed tasting profile with flavors and aromas",
+  "foodPairings": "recommended food pairings",
+  "price": "typical price range",
+  "description": "2-3 sentence overview"
+}
+
+Be detailed. If wine not found or field unknown, use empty string.`
+            }],
+            max_tokens: 1000
+          })
+        });
+
+        if (!response.ok) throw new Error('API request failed');
+
+        const data = await response.json();
+        let text = data.choices[0].message.content.trim();
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        learnedWineData = JSON.parse(text);
+        learnedWineData.image = null;
+        displayLearnedWine();
+
+      } catch (err) {
+        console.error('Search error:', err);
+        alert('Could not find wine information. Please try again.');
+        showLearnOptions();
+      }
+    }
+
+    function displayLearnedWine() {
+      const w = learnedWineData;
+      const imgContainer = document.getElementById('learnImageContainer');
+      
+      if (w.image) {
+        imgContainer.innerHTML = `<img src="${w.image}" class="image-preview">`;
+      } else {
+        imgContainer.innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      }
+
+      document.getElementById('learnWineName').textContent = w.name || 'Unknown Wine';
+
+      const typeColors = {
+        'Red': '#dc2626',
+        'White': '#fbbf24',
+        'Rosé': '#ec4899',
+        'Sparkling': '#8b5cf6',
+        'Dessert': '#f59e0b'
+      };
+      const typeColor = typeColors[w.type] || '#6b7280';
+
+      document.getElementById('learnWineInfo').innerHTML = `
+        ${w.type ? `<div style="margin-bottom: 16px;">
+          <span style="background: ${typeColor}; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            ${w.type} Wine
+          </span>
+        </div>` : ''}
+
+        ${w.description ? `<div class="form-group">
+          <label>About This Wine</label>
+          <div style="color: #374151; line-height: 1.6;">${w.description}</div>
+        </div>` : ''}
+
+        ${w.vintage ? `<div class="form-group">
+          <label>Vintage</label>
+          <div style="color: #6b7280">${w.vintage}</div>
+        </div>` : ''}
+
+        ${w.producer ? `<div class="form-group">
+          <label>Producer</label>
+          <div style="color: #6b7280">${w.producer}</div>
+        </div>` : ''}
+
+        ${w.region ? `<div class="form-group">
+          <label>Region</label>
+          <div style="color: #6b7280">${w.region}</div>
+        </div>` : ''}
+
+        ${w.varietal ? `<div class="form-group">
+          <label>Varietal / Blend</label>
+          <div style="color: #6b7280">${w.varietal}</div>
+        </div>` : ''}
+
+        ${w.tastingNotes ? `<div class="form-group">
+          <label>Tasting Notes</label>
+          <div style="color: #374151; line-height: 1.6; background: #f9fafb; padding: 12px; border-radius: 8px;">
+            ${w.tastingNotes}
+          </div>
+        </div>` : ''}
+
+        ${w.foodPairings ? `<div class="form-group">
+          <label>Food Pairings</label>
+          <div style="color: #374151; line-height: 1.6;">
+            ${w.foodPairings}
+          </div>
+        </div>` : ''}
+
+        ${w.price ? `<div class="form-group">
+          <label>Typical Price</label>
+          <div style="color: #6b7280">${w.price}</div>
+        </div>` : ''}
+      `;
+
+      showView('learnResultView');
+    }
+
+    function addLearnedWineToCollection() {
+      if (!learnedWineData) return;
+      
+      const w = learnedWineData;
+      document.getElementById('imageContainer').innerHTML = w.image 
+        ? `<img src="${w.image}" class="image-preview">`
+        : '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      
+      document.getElementById('wineName').value = w.name || '';
+      document.getElementById('wineVintage').value = w.vintage || '';
+      document.getElementById('wineProducer').value = w.producer || '';
+      document.getElementById('wineRegion').value = w.region || '';
+      document.getElementById('wineVarietal').value = w.varietal || '';
+      
+      currentImageData = w.image;
+      showView('resultView');
     }
 
     updateCollectionCount();
