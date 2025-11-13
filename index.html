@@ -911,7 +911,10 @@ Be precise and only include information you can clearly see on the label.`
     }
 
     function manualEntry() {
-      document.getElementById('capturedImage').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%239333ea" width="400" height="300"/><text x="50%" y="50%" fill="white" font-size="48" text-anchor="middle" dy=".3em">🍷</text></svg>';
+      // Use a default wine bottle image
+      const defaultWineImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="bottle" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:%2391002b;stop-opacity:1"/><stop offset="100%" style="stop-color:%23580019;stop-opacity:1"/></linearGradient></defs><rect fill="%23f8f8f8" width="400" height="600"/><path d="M160 50 L240 50 L240 100 L220 120 L220 500 Q220 520 200 520 Q180 520 180 500 L180 120 L160 100 Z" fill="url(%23bottle)"/><ellipse cx="200" cy="50" rx="40" ry="10" fill="%23800020"/><rect x="170" y="200" width="60" height="120" fill="%23d4af37" opacity="0.3"/><text x="200" y="250" font-family="serif" font-size="24" fill="%23d4af37" text-anchor="middle" opacity="0.5">WINE</text></svg>';
+      
+      document.getElementById('capturedImage').src = defaultWineImage;
       document.getElementById('wineName').value = '';
       document.getElementById('wineVintage').value = '';
       document.getElementById('wineProducer').value = '';
