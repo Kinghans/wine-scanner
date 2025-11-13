@@ -142,8 +142,22 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
 
+    .wine-item-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
     .wine-emoji {
       font-size: 40px;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .wine-info {
@@ -490,6 +504,16 @@
       height: 150px;
       object-fit: cover;
       border-radius: 12px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
+    }
+
+    .wine-comparison-card.no-image {
+      padding: 30px 20px;
+    }
+
+    .wine-comparison-card.no-image .wine-icon-large {
+      font-size: 48px;
       margin-bottom: 12px;
     }
 
@@ -943,10 +967,8 @@ Be precise and only include information you can clearly see on the label.`
     }
 
     function manualEntry() {
-      // Use a default wine bottle image
-      const defaultWineImage = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="bottle" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:%2391002b;stop-opacity:1"/><stop offset="100%" style="stop-color:%23580019;stop-opacity:1"/></linearGradient></defs><rect fill="%23f8f8f8" width="400" height="600"/><path d="M160 50 L240 50 L240 100 L220 120 L220 500 Q220 520 200 520 Q180 520 180 500 L180 120 L160 100 Z" fill="url(%23bottle)"/><ellipse cx="200" cy="50" rx="40" ry="10" fill="%23800020"/><rect x="170" y="200" width="60" height="120" fill="%23d4af37" opacity="0.3"/><text x="200" y="250" font-family="serif" font-size="24" fill="%23d4af37" text-anchor="middle" opacity="0.5">WINE</text></svg>';
-      
-      document.getElementById('capturedImage').src = defaultWineImage;
+      // For manual entry, don't set a default image - we'll use emoji instead
+      document.getElementById('capturedImage').src = '';
       document.getElementById('wineName').value = '';
       document.getElementById('wineVintage').value = '';
       document.getElementById('wineProducer').value = '';
@@ -972,10 +994,10 @@ Be precise and only include information you can clearly see on the label.`
         region: document.getElementById('wineRegion').value || '',
         varietal: document.getElementById('wineVarietal').value || '',
         score: null,
-        sentiment: null, // 'yes', 'ok', 'no'
+        sentiment: null,
         comparisons: 0,
         notes: '',
-        image: document.getElementById('capturedImage').src,
+        image: document.getElementById('capturedImage').src || null,
         dateAdded: new Date().toISOString().split('T')[0]
       };
       
@@ -1009,10 +1031,14 @@ Be precise and only include information you can clearly see on the label.`
         list.innerHTML = sortedWines.map((wine) => {
           const hasScore = wine.score !== null;
           const scoreDisplay = hasScore ? wine.score.toFixed(1) : 'Unranked';
+          const hasImage = wine.image && wine.image.startsWith('data:image');
           
           return `
           <div class="wine-item" onclick="showDetail(${wine.id})">
-            <div class="wine-emoji">🍷</div>
+            ${hasImage ? 
+              `<img src="${wine.image}" class="wine-item-image" alt="${wine.name}">` :
+              `<div class="wine-emoji">🍷</div>`
+            }
             <div class="wine-info">
               <div class="wine-name">${wine.name}</div>
               <div class="wine-meta">
@@ -1044,7 +1070,12 @@ Be precise and only include information you can clearly see on the label.`
       
       const card = document.getElementById('detailCard');
       card.innerHTML = `
-        <img src="${wine.image}" class="image-preview" alt="Wine label">
+        ${wine.image && wine.image.startsWith('data:image') ? 
+          `<img src="${wine.image}" class="image-preview" alt="Wine label">` :
+          `<div style="text-align: center; padding: 40px; background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%); border-radius: 12px; margin-bottom: 16px;">
+            <div style="font-size: 80px;">🍷</div>
+          </div>`
+        }
         <h2>${wine.name}</h2>
         <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
         
@@ -1179,93 +1210,136 @@ Be precise and only include information you can clearly see on the label.`
       );
       
       if (sameSentimentWines.length === 0) {
-        // First wine with this sentiment - assign base score
-        const baseScores = {
-          'yes': 8.0,
-          'ok': 5.0,
-          'no': 2.0
-        };
-        currentWine.score = baseScores[sentiment];
+        // First wine with this sentiment
+        currentWine.score = getInitialScore(sentiment);
         currentWine.comparisons = 0;
+        recalculateAllScores();
         localStorage.setItem('wines', JSON.stringify(wines));
         showCollection();
         return;
       }
       
-      // Pick a random wine to compare against
-      const opponent = sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
+      // Initialize tracking for comparisons
       currentComparison = {
         newWine: currentWine,
-        opponent: opponent,
         sentiment: sentiment,
-        remainingComparisons: Math.min(3, sameSentimentWines.length) // Max 3 comparisons
+        comparisonResults: [], // Track wins/losses
+        totalComparisons: 0
       };
       
+      // Compare against all wines in same sentiment (or max 5)
+      compareNextWine();
+    }
+
+    function compareNextWine() {
+      const { newWine, sentiment, comparisonResults, totalComparisons } = currentComparison;
+      
+      const sameSentimentWines = wines.filter(w => 
+        w.sentiment === sentiment && 
+        w.id !== newWine.id && 
+        w.score !== null
+      );
+      
+      // Limit to 5 comparisons max
+      if (totalComparisons >= Math.min(5, sameSentimentWines.length)) {
+        // Calculate final score based on win rate
+        calculateFinalScore();
+        return;
+      }
+      
+      // Pick next wine to compare (prioritize wines we haven't compared yet)
+      const compared = comparisonResults.map(r => r.opponentId);
+      const uncompared = sameSentimentWines.filter(w => !compared.includes(w.id));
+      
+      const opponent = uncompared.length > 0 
+        ? uncompared[0] 
+        : sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
+      
+      currentComparison.opponent = opponent;
       displayComparison();
     }
 
-    function displayComparison() {
-      showView('comparisonView');
+    function selectWinner(winner) {
+      const { newWine, opponent, sentiment, comparisonResults } = currentComparison;
       
-      const { newWine, opponent } = currentComparison;
-      const options = document.getElementById('comparisonOptions');
+      // Record the result
+      comparisonResults.push({
+        opponentId: opponent.id,
+        opponentScore: opponent.score,
+        newWineWon: winner === 'new'
+      });
       
-      options.innerHTML = `
-        <div class="wine-comparison-card" onclick="selectWinner('new')">
-          <img src="${newWine.image}" alt="${newWine.name}">
-          <h3>${newWine.name}</h3>
-          <p class="vintage">${newWine.vintage || 'N/A'}</p>
-        </div>
-        <div class="wine-comparison-card" onclick="selectWinner('opponent')">
-          <img src="${opponent.image}" alt="${opponent.name}">
-          <h3>${opponent.name}</h3>
-          <p class="vintage">${opponent.vintage || 'N/A'}${opponent.score ? ' • ' + opponent.score.toFixed(1) : ''}</p>
-        </div>
-      `;
+      currentComparison.totalComparisons++;
+      
+      // Continue to next comparison
+      compareNextWine();
     }
 
-    function selectWinner(winner) {
-      const { newWine, opponent, sentiment } = currentComparison;
+    function calculateFinalScore() {
+      const { newWine, sentiment, comparisonResults } = currentComparison;
       
-      if (winner === 'new') {
-        // New wine is better - adjust score higher
-        if (newWine.score === null) {
-          newWine.score = Math.min(opponent.score + 0.3, getMaxScore(sentiment));
-        } else {
-          newWine.score = Math.min(newWine.score + 0.2, getMaxScore(sentiment));
-        }
-      } else {
-        // Opponent is better - adjust score lower
-        if (newWine.score === null) {
-          newWine.score = Math.max(opponent.score - 0.3, getMinScore(sentiment));
-        } else {
-          newWine.score = Math.max(newWine.score - 0.2, getMinScore(sentiment));
-        }
-      }
+      // Calculate wins and average opponent score
+      const wins = comparisonResults.filter(r => r.newWineWon).length;
+      const total = comparisonResults.length;
+      const winRate = wins / total;
       
-      newWine.comparisons = (newWine.comparisons || 0) + 1;
-      currentComparison.remainingComparisons--;
+      const avgOpponentScore = comparisonResults.reduce((sum, r) => sum + r.opponentScore, 0) / total;
+      
+      // Score based on win rate relative to opponent scores
+      // If you beat everyone, you're above the average
+      // If you lost to everyone, you're below
+      const scoreAdjustment = (winRate - 0.5) * 0.8; // Max ±0.4 adjustment
+      newWine.score = Math.max(
+        getMinScore(sentiment),
+        Math.min(
+          getMaxScore(sentiment),
+          avgOpponentScore + scoreAdjustment
+        )
+      );
+      
+      newWine.comparisons = total;
+      
+      // Recalculate all scores to maintain proper ordering
+      recalculateAllScores();
       
       localStorage.setItem('wines', JSON.stringify(wines));
+      finishRanking();
+    }
+
+    function recalculateAllScores() {
+      // Sort wines by sentiment, then by their comparisons and results
+      const sentiments = ['yes', 'ok', 'no'];
+      let currentRank = 10.0;
       
-      // Continue comparing or finish
-      if (currentComparison.remainingComparisons > 0) {
-        const sameSentimentWines = wines.filter(w => 
-          w.sentiment === sentiment && 
-          w.id !== currentWineId && 
-          w.score !== null &&
-          w.id !== opponent.id // Don't compare against same wine twice
-        );
+      sentiments.forEach(sentiment => {
+        const sentimentWines = wines
+          .filter(w => w.sentiment === sentiment && w.score !== null)
+          .sort((a, b) => b.score - a.score);
         
-        if (sameSentimentWines.length > 0) {
-          currentComparison.opponent = sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
-          displayComparison();
-          return;
-        }
+        if (sentimentWines.length === 0) return;
+        
+        // Assign scores from top of range downward
+        const maxScore = getMaxScore(sentiment);
+        const minScore = getMinScore(sentiment);
+        const range = maxScore - minScore;
+        
+        sentimentWines.forEach((wine, index) => {
+          // Preserve relative ordering but compress into range
+          const relativePosition = index / Math.max(1, sentimentWines.length - 1);
+          wine.score = maxScore - (relativePosition * range);
+        });
+      });
+    }
+
+    function getInitialScore(sentiment) {
+      // Find the median score for this sentiment, or use default
+      const sentimentWines = wines.filter(w => w.sentiment === sentiment && w.score !== null);
+      if (sentimentWines.length === 0) {
+        return sentiment === 'yes' ? 9.0 : sentiment === 'ok' ? 5.5 : 2.0;
       }
       
-      // Finished ranking
-      finishRanking();
+      const scores = sentimentWines.map(w => w.score).sort((a, b) => b - a);
+      return scores[Math.floor(scores.length / 2)];
     }
 
     function getMaxScore(sentiment) {
@@ -1273,7 +1347,7 @@ Be precise and only include information you can clearly see on the label.`
     }
 
     function getMinScore(sentiment) {
-      return sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.0 : 1.0;
+      return sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.1 : 1.0;
     }
 
     function finishRanking() {
