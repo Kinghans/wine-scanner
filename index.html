@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#9333ea">
   <title>WineScan - Wine Collection Tracker</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -162,19 +161,26 @@
       color: #6b7280;
     }
 
-    .stars {
+    .rank-section {
       display: flex;
       gap: 4px;
       margin-top: 4px;
+      align-items: center;
     }
 
-    .star {
-      color: #fbbf24;
-      font-size: 16px;
+    .rank-badge {
+      background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: inline-block;
     }
 
-    .star.empty {
-      color: #d1d5db;
+    .rank-badge.unranked {
+      background: #e5e7eb;
+      color: #6b7280;
     }
 
     .hidden {
@@ -195,25 +201,6 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-    }
-
-    #barcode-scanner {
-      width: 100%;
-      height: 100%;
-    }
-
-    #barcode-scanner video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    #barcode-scanner canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
     }
 
     .camera-overlay {
@@ -351,22 +338,6 @@
       min-height: 100px;
     }
 
-    .rating-input {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .rating-star {
-      font-size: 32px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .rating-star:hover {
-      transform: scale(1.2);
-    }
-
     .btn-group {
       display: flex;
       gap: 12px;
@@ -400,6 +371,26 @@
     }
 
     .close-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .settings-btn:hover {
       background: rgba(255,255,255,0.2);
     }
 
@@ -462,6 +453,71 @@
       cursor: pointer;
       font-size: 14px;
     }
+
+    .comparison-view {
+      max-width: 100%;
+    }
+
+    .comparison-options {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .wine-comparison-card {
+      flex: 1;
+      background: white;
+      border: 3px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+
+    .wine-comparison-card:hover {
+      transform: translateY(-4px);
+      border-color: #9333ea;
+      box-shadow: 0 8px 20px rgba(147, 51, 234, 0.2);
+    }
+
+    .wine-comparison-card:active {
+      transform: scale(0.98);
+    }
+
+    .wine-comparison-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    .wine-comparison-card h3 {
+      font-size: 16px;
+      margin-bottom: 4px;
+      color: #1f2937;
+    }
+
+    .wine-comparison-card .vintage {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .comparison-prompt {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #6b7280;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .comparison-controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 24px;
+    }
   </style>
 </head>
 <body>
@@ -473,7 +529,10 @@
           <span>🍷</span>
           <span>WineScan</span>
         </h1>
-        <button class="close-btn hidden" onclick="goHome()">×</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="settings-btn" onclick="showSettings()" title="Settings">⚙️</button>
+          <button class="close-btn hidden" onclick="goHome()">×</button>
+        </div>
       </div>
     </div>
 
@@ -603,6 +662,66 @@
       <div class="card" id="detailCard"></div>
     </div>
 
+    <!-- Settings View -->
+    <div id="settingsView" class="content hidden">
+      <div class="card">
+        <h2>Settings</h2>
+        <p class="subtitle">Configure AI wine recognition</p>
+        
+        <div class="form-group">
+          <label>OpenAI API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="sk-...">
+          <div class="help-text">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #9333ea;">platform.openai.com</a></div>
+          <div class="help-text" style="margin-top: 8px;">This enables AI-powered wine label recognition. Your key is stored locally on your device.</div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">
+            <span>💾</span>
+            <span>Save API Key</span>
+          </button>
+          <button class="btn btn-secondary" onclick="goHome()">
+            Cancel
+          </button>
+        </div>
+        
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #f3f4f6;">
+          <h3 style="font-size: 16px; margin-bottom: 8px;">How to get an API key:</h3>
+          <ol style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-left: 20px;">
+            <li>Visit <a href="https://platform.openai.com/signup" target="_blank" style="color: #9333ea;">platform.openai.com/signup</a></li>
+            <li>Create an account or sign in</li>
+            <li>Go to API Keys section</li>
+            <li>Click "Create new secret key"</li>
+            <li>Copy and paste it above</li>
+          </ol>
+          <div class="help-text" style="margin-top: 12px;">Note: OpenAI charges per API call (~$0.01 per wine scan). You'll need to add payment info.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison View -->
+    <div id="comparisonView" class="content hidden">
+      <div class="card comparison-view">
+        <h2>Rank Your Wines</h2>
+        <p class="comparison-prompt">Which wine did you prefer?</p>
+        
+        <div class="comparison-options" id="comparisonOptions"></div>
+        
+        <div class="comparison-controls">
+          <button class="btn btn-secondary" onclick="skipComparison()">
+            Can't Decide / Skip
+          </button>
+        </div>
+        
+        <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #f3f4f6; text-align: center;">
+          <p style="color: #6b7280; font-size: 14px;">
+            Compare wines to build your personal ranking.<br>
+            The more you compare, the more accurate your rankings become!
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Floating Action Button -->
     <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
   </div>
@@ -612,9 +731,18 @@
     let currentWineId = null;
     let stream = null;
     let facingMode = 'environment';
+    let currentComparison = null;
+
+    // Migrate old wines to new format
+    wines = wines.map(w => ({
+      ...w,
+      eloScore: w.eloScore || 1500,
+      comparisons: w.comparisons || 0,
+      rating: null
+    }));
 
     function showView(viewId) {
-      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView'].forEach(id => {
+      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView', 'settingsView', 'comparisonView'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(viewId).classList.remove('hidden');
@@ -686,7 +814,7 @@
       document.getElementById('processingStatus').textContent = 'Analyzing wine label with AI...';
       
       try {
-        // Try OpenAI GPT-4 Vision first
+        // Try OpenAI GPT-4 Vision
         const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -808,7 +936,9 @@ Be precise and only include information you can clearly see on the label.`
         producer: document.getElementById('wineProducer').value || '',
         region: document.getElementById('wineRegion').value || '',
         varietal: document.getElementById('wineVarietal').value || '',
-        rating: 0,
+        rating: null,
+        eloScore: 1500,
+        comparisons: 0,
         notes: '',
         image: document.getElementById('capturedImage').src,
         dateAdded: new Date().toISOString().split('T')[0]
@@ -817,7 +947,17 @@ Be precise and only include information you can clearly see on the label.`
       wines.unshift(wine);
       localStorage.setItem('wines', JSON.stringify(wines));
       updateCollectionCount();
-      showCollection();
+      
+      // Prompt to rank if we have 2+ wines
+      if (wines.length >= 2) {
+        if (confirm('Wine saved! Would you like to rank it against your other wines?')) {
+          startComparison();
+        } else {
+          showCollection();
+        }
+      } else {
+        showCollection();
+      }
     }
 
     function showCollection() {
@@ -829,7 +969,15 @@ Be precise and only include information you can clearly see on the label.`
         empty.classList.remove('hidden');
       } else {
         empty.classList.add('hidden');
-        list.innerHTML = wines.map(wine => `
+        
+        // Sort by ELO score
+        const sortedWines = [...wines].sort((a, b) => b.eloScore - a.eloScore);
+        
+        list.innerHTML = sortedWines.map((wine, index) => {
+          const rank = index + 1;
+          const hasRanking = wine.comparisons > 0;
+          
+          return `
           <div class="wine-item" onclick="showDetail(${wine.id})">
             <div class="wine-emoji">🍷</div>
             <div class="wine-info">
@@ -837,14 +985,12 @@ Be precise and only include information you can clearly see on the label.`
               <div class="wine-meta">
                 ${wine.vintage ? wine.vintage + ' • ' : ''}${wine.region || wine.producer || 'Unknown region'}
               </div>
-              <div class="stars">
-                ${[...Array(5)].map((_, i) => 
-                  `<span class="star ${i >= wine.rating ? 'empty' : ''}">★</span>`
-                ).join('')}
+              <div class="rank-section">
+                <span class="rank-badge ${!hasRanking ? 'unranked' : ''}">${hasRanking ? `#${rank} of ${wines.length}` : 'Unranked'}</span>
               </div>
             </div>
           </div>
-        `).join('');
+        `}).join('');
       }
       
       showView('collectionView');
@@ -853,6 +999,11 @@ Be precise and only include information you can clearly see on the label.`
     function showDetail(id) {
       const wine = wines.find(w => w.id === id);
       currentWineId = id;
+      
+      // Calculate rank
+      const sortedWines = [...wines].sort((a, b) => b.eloScore - a.eloScore);
+      const rank = sortedWines.findIndex(w => w.id === id) + 1;
+      const hasRanking = wine.comparisons > 0;
       
       const card = document.getElementById('detailCard');
       card.innerHTML = `
@@ -876,12 +1027,16 @@ Be precise and only include information you can clearly see on the label.`
         </div>` : ''}
         
         <div class="form-group">
-          <label>My Rating</label>
-          <div class="rating-input">
-            ${[...Array(5)].map((_, i) => 
-              `<span class="rating-star ${i >= wine.rating ? 'empty' : ''}" onclick="updateRating(${i + 1})">★</span>`
-            ).join('')}
+          <label>Your Ranking</label>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span class="rank-badge ${!hasRanking ? 'unranked' : ''}" style="font-size: 18px;">
+              ${hasRanking ? `#${rank} of ${wines.length}` : 'Not yet ranked'}
+            </span>
+            ${wines.length >= 2 ? `<button class="btn btn-secondary" onclick="startComparisonForWine(${id})" style="width: auto; padding: 8px 16px; font-size: 14px;">
+              Compare Now
+            </button>` : ''}
           </div>
+          ${hasRanking ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
         </div>
         
         <div class="form-group">
@@ -908,13 +1063,6 @@ Be precise and only include information you can clearly see on the label.`
       showView('detailView');
     }
 
-    function updateRating(rating) {
-      const wine = wines.find(w => w.id === currentWineId);
-      wine.rating = rating;
-      localStorage.setItem('wines', JSON.stringify(wines));
-      showDetail(currentWineId);
-    }
-
     function saveNotes() {
       const wine = wines.find(w => w.id === currentWineId);
       wine.notes = document.getElementById('wineNotes').value;
@@ -933,6 +1081,103 @@ Be precise and only include information you can clearly see on the label.`
 
     function updateCollectionCount() {
       document.getElementById('collectionCount').textContent = `My Collection (${wines.length})`;
+    }
+
+    function showSettings() {
+      const apiKey = localStorage.getItem('openai_key') || '';
+      document.getElementById('apiKeyInput').value = apiKey;
+      showView('settingsView');
+    }
+
+    function saveSettings() {
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      if (apiKey) {
+        localStorage.setItem('openai_key', apiKey);
+        alert('API key saved! AI wine recognition is now enabled.');
+      } else {
+        localStorage.removeItem('openai_key');
+        alert('API key removed. Manual entry only.');
+      }
+      goHome();
+    }
+
+    // ELO Rating System for wine comparisons
+    function calculateElo(winner, loser) {
+      const K = 32; // K-factor (sensitivity)
+      const expectedWinner = 1 / (1 + Math.pow(10, (loser.eloScore - winner.eloScore) / 400));
+      const expectedLoser = 1 / (1 + Math.pow(10, (winner.eloScore - loser.eloScore) / 400));
+      
+      winner.eloScore = Math.round(winner.eloScore + K * (1 - expectedWinner));
+      loser.eloScore = Math.round(loser.eloScore + K * (0 - expectedLoser));
+      
+      winner.comparisons = (winner.comparisons || 0) + 1;
+      loser.comparisons = (loser.comparisons || 0) + 1;
+    }
+
+    function startComparison() {
+      if (wines.length < 2) {
+        alert('You need at least 2 wines to start ranking!');
+        showCollection();
+        return;
+      }
+      
+      // Pick two random wines
+      const shuffled = [...wines].sort(() => Math.random() - 0.5);
+      currentComparison = [shuffled[0], shuffled[1]];
+      
+      displayComparison();
+    }
+
+    function startComparisonForWine(wineId) {
+      if (wines.length < 2) {
+        alert('You need at least 2 wines to compare!');
+        return;
+      }
+      
+      const wine = wines.find(w => w.id === wineId);
+      const others = wines.filter(w => w.id !== wineId);
+      const opponent = others[Math.floor(Math.random() * others.length)];
+      
+      currentComparison = [wine, opponent];
+      displayComparison();
+    }
+
+    function displayComparison() {
+      showView('comparisonView');
+      
+      const options = document.getElementById('comparisonOptions');
+      options.innerHTML = currentComparison.map(wine => `
+        <div class="wine-comparison-card" onclick="selectWinner(${wine.id})">
+          <img src="${wine.image}" alt="${wine.name}">
+          <h3>${wine.name}</h3>
+          <p class="vintage">${wine.vintage || 'N/A'}</p>
+        </div>
+      `).join('');
+    }
+
+    function selectWinner(winnerId) {
+      const winner = wines.find(w => w.id === winnerId);
+      const loser = currentComparison.find(w => w.id !== winnerId);
+      
+      calculateElo(winner, loser);
+      localStorage.setItem('wines', JSON.stringify(wines));
+      
+      // Ask if they want to continue
+      if (confirm('Wine ranked! Compare another pair?')) {
+        startComparison();
+      } else {
+        showCollection();
+      }
+    }
+
+    function skipComparison() {
+      if (confirm('Skip this comparison?')) {
+        if (confirm('Compare a different pair?')) {
+          startComparison();
+        } else {
+          showCollection();
+        }
+      }
     }
 
     // Initialize
