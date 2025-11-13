@@ -6,26 +6,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#9333ea">
-  <title>WineScan - Wine Collection Tracker</title>
+  <title>WineScan v2.0</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #faf5ff 0%, #fce7f3 100%);
       min-height: 100vh;
       padding-bottom: 20px;
     }
-
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-    }
-
+    .container { max-width: 500px; margin: 0 auto; }
     .header {
       background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
       color: white;
@@ -35,21 +25,18 @@
       top: 0;
       z-index: 100;
     }
-
     .header-content {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
     }
-
     .header h1 {
       font-size: 24px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-
     .btn {
       padding: 14px 24px;
       border: none;
@@ -64,32 +51,22 @@
       transition: all 0.3s;
       width: 100%;
     }
-
     .btn-primary {
       background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
       color: white;
       box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
     }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(147, 51, 234, 0.4);
-    }
-
     .btn-secondary {
       background: white;
       color: #9333ea;
       border: 2px solid #9333ea;
     }
-
-    .btn-secondary:hover {
-      background: #faf5ff;
+    .btn-danger {
+      background: #fee;
+      color: #dc2626;
+      border: none;
     }
-
-    .content {
-      padding: 20px;
-    }
-
+    .content { padding: 20px; }
     .card {
       background: white;
       border-radius: 16px;
@@ -97,34 +74,11 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       margin-bottom: 16px;
     }
-
-    .wine-icon {
-      font-size: 64px;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .text-center {
-      text-align: center;
-    }
-
-    h2 {
-      font-size: 24px;
-      margin-bottom: 8px;
-      color: #1f2937;
-    }
-
-    .subtitle {
-      color: #6b7280;
-      margin-bottom: 24px;
-    }
-
-    .wine-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
+    .wine-icon { font-size: 64px; text-align: center; margin-bottom: 20px; }
+    .text-center { text-align: center; }
+    h2 { font-size: 24px; margin-bottom: 8px; color: #1f2937; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; }
+    .wine-list { display: flex; flex-direction: column; gap: 12px; }
     .wine-item {
       background: white;
       border-radius: 12px;
@@ -136,12 +90,7 @@
       gap: 16px;
       align-items: center;
     }
-
-    .wine-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    }
-
+    .wine-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
     .wine-item-image {
       width: 60px;
       height: 60px;
@@ -149,7 +98,6 @@
       object-fit: cover;
       flex-shrink: 0;
     }
-
     .wine-emoji {
       font-size: 40px;
       width: 60px;
@@ -158,30 +106,13 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
+      border-radius: 8px;
     }
-
-    .wine-info {
-      flex: 1;
-    }
-
-    .wine-name {
-      font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 4px;
-    }
-
-    .wine-meta {
-      font-size: 14px;
-      color: #6b7280;
-    }
-
-    .rank-section {
-      display: flex;
-      gap: 4px;
-      margin-top: 4px;
-      align-items: center;
-    }
-
+    .wine-info { flex: 1; }
+    .wine-name { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+    .wine-meta { font-size: 14px; color: #6b7280; }
+    .rank-section { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
     .rank-badge {
       background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
       color: white;
@@ -189,18 +120,9 @@
       border-radius: 12px;
       font-weight: 600;
       font-size: 14px;
-      display: inline-block;
     }
-
-    .rank-badge.unranked {
-      background: #e5e7eb;
-      color: #6b7280;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
+    .rank-badge.unranked { background: #e5e7eb; color: #6b7280; }
+    .hidden { display: none !important; }
     .camera-container {
       position: relative;
       width: 100%;
@@ -210,13 +132,7 @@
       overflow: hidden;
       margin-bottom: 16px;
     }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
+    video { width: 100%; height: 100%; object-fit: cover; }
     .camera-overlay {
       position: absolute;
       top: 50%;
@@ -228,7 +144,6 @@
       border-radius: 12px;
       pointer-events: none;
     }
-
     .camera-hint {
       position: absolute;
       top: 20px;
@@ -243,7 +158,6 @@
       max-width: 80%;
       z-index: 10;
     }
-
     .camera-controls {
       position: absolute;
       bottom: 20px;
@@ -255,7 +169,6 @@
       gap: 20px;
       z-index: 10;
     }
-
     .capture-btn {
       width: 70px;
       height: 70px;
@@ -266,7 +179,6 @@
       transition: all 0.2s;
       position: relative;
     }
-
     .capture-btn::after {
       content: '';
       position: absolute;
@@ -278,11 +190,6 @@
       border-radius: 50%;
       background: #9333ea;
     }
-
-    .capture-btn:active {
-      transform: scale(0.9);
-    }
-
     .flip-camera-btn {
       width: 50px;
       height: 50px;
@@ -295,17 +202,7 @@
       align-items: center;
       justify-content: center;
     }
-
-    canvas {
-      max-width: 100%;
-      border-radius: 12px;
-    }
-
-    .processing {
-      text-align: center;
-      padding: 40px 20px;
-    }
-
+    .processing { text-align: center; padding: 40px 20px; }
     .spinner {
       border: 4px solid #f3f4f6;
       border-top: 4px solid #9333ea;
@@ -315,16 +212,11 @@
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
-
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
+    .form-group { margin-bottom: 16px; }
     label {
       display: block;
       font-weight: 600;
@@ -332,7 +224,6 @@
       color: #374151;
       font-size: 14px;
     }
-
     input, textarea {
       width: 100%;
       padding: 12px;
@@ -341,54 +232,13 @@
       font-size: 16px;
       font-family: inherit;
     }
-
     input:focus, textarea:focus {
       outline: none;
       border-color: #9333ea;
     }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .btn-danger {
-      background: #fee;
-      color: #dc2626;
-      border: none;
-    }
-
-    .btn-danger:hover {
-      background: #fdd;
-    }
-
-    .close-btn {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 28px;
-      cursor: pointer;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      transition: background 0.2s;
-    }
-
-    .close-btn:hover {
-      background: rgba(255,255,255,0.2);
-    }
-
-    .settings-btn {
+    textarea { resize: vertical; min-height: 100px; }
+    .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+    .close-btn, .settings-btn {
       background: none;
       border: none;
       color: white;
@@ -403,17 +253,16 @@
       border-radius: 50%;
       transition: background 0.2s;
     }
-
-    .settings-btn:hover {
-      background: rgba(255,255,255,0.2);
-    }
-
-    .image-preview {
-      width: 100%;
+    .close-btn { font-size: 28px; }
+    .image-preview { width: 100%; border-radius: 12px; margin-bottom: 16px; }
+    .image-placeholder {
+      text-align: center;
+      padding: 60px;
+      background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
       border-radius: 12px;
       margin-bottom: 16px;
     }
-
+    .image-placeholder .icon { font-size: 120px; }
     .fab {
       position: fixed;
       bottom: 24px;
@@ -430,35 +279,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s;
     }
-
-    .fab:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 16px rgba(147, 51, 234, 0.5);
-    }
-
-    .file-input {
-      display: none;
-    }
-
-    .option-buttons {
-      display: flex;
-      gap: 12px;
-      flex-direction: column;
-    }
-
-    .help-text {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-
-    .skip-scan {
-      margin-top: 12px;
-      text-align: center;
-    }
-
+    .file-input { display: none; }
+    .option-buttons { display: flex; gap: 12px; flex-direction: column; }
+    .help-text { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    .skip-scan { margin-top: 12px; text-align: center; }
     .skip-scan button {
       background: none;
       border: none;
@@ -467,17 +292,7 @@
       cursor: pointer;
       font-size: 14px;
     }
-
-    .comparison-view {
-      max-width: 100%;
-    }
-
-    .comparison-options {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
+    .comparison-options { display: flex; gap: 12px; margin-bottom: 24px; }
     .wine-comparison-card {
       flex: 1;
       background: white;
@@ -488,46 +303,27 @@
       transition: all 0.3s;
       text-align: center;
     }
-
     .wine-comparison-card:hover {
       transform: translateY(-4px);
       border-color: #9333ea;
       box-shadow: 0 8px 20px rgba(147, 51, 234, 0.2);
     }
-
-    .wine-comparison-card:active {
-      transform: scale(0.98);
-    }
-
     .wine-comparison-card img {
       width: 100%;
       height: 150px;
       object-fit: cover;
       border-radius: 12px;
       margin-bottom: 12px;
-      background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
     }
-
-    .wine-comparison-card.no-image {
-      padding: 30px 20px;
-    }
-
-    .wine-comparison-card.no-image .wine-icon-large {
-      font-size: 48px;
+    .wine-comparison-card .wine-icon-large {
+      font-size: 64px;
       margin-bottom: 12px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
+      border-radius: 12px;
     }
-
-    .wine-comparison-card h3 {
-      font-size: 16px;
-      margin-bottom: 4px;
-      color: #1f2937;
-    }
-
-    .wine-comparison-card .vintage {
-      font-size: 14px;
-      color: #6b7280;
-    }
-
+    .wine-comparison-card h3 { font-size: 16px; margin-bottom: 4px; color: #1f2937; }
+    .wine-comparison-card .vintage { font-size: 14px; color: #6b7280; }
     .comparison-prompt {
       text-align: center;
       margin-bottom: 24px;
@@ -535,66 +331,44 @@
       font-size: 18px;
       font-weight: 500;
     }
-
-    .comparison-controls {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 24px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
     <div class="header">
       <div class="header-content">
-        <h1>
-          <span>🍷</span>
-          <span>WineScan</span>
-        </h1>
+        <h1><span>🍷</span><span>WineScan</span></h1>
         <div style="display: flex; gap: 8px;">
-          <button class="settings-btn" onclick="showSettings()" title="Settings">⚙️</button>
+          <button class="settings-btn" onclick="showSettings()">⚙️</button>
           <button class="close-btn hidden" onclick="goHome()">×</button>
         </div>
       </div>
     </div>
 
-    <!-- Home View -->
     <div id="homeView" class="content">
       <div class="card text-center">
         <div class="wine-icon">🍷</div>
         <h2>Discover & Track Wines</h2>
         <p class="subtitle">Scan labels, save favorites, build your collection</p>
-        
         <div class="option-buttons">
           <button class="btn btn-primary" onclick="startCamera()">
-            <span>📷</span>
-            <span>Take Photo</span>
+            <span>📷</span><span>Take Photo</span>
           </button>
-          
           <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
-            <span>🖼️</span>
-            <span>Upload from Library</span>
+            <span>🖼️</span><span>Upload from Library</span>
           </button>
-          
           <button class="btn btn-secondary" onclick="manualEntry()">
-            <span>✍️</span>
-            <span>Enter Manually</span>
+            <span>✍️</span><span>Enter Manually</span>
           </button>
         </div>
-        
         <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileUpload(event)">
-        
         <div style="height: 24px"></div>
         <button class="btn btn-secondary" onclick="showCollection()">
-          <span>🍷</span>
-          <span id="collectionCount">My Collection (0)</span>
+          <span>🍷</span><span id="collectionCount">My Collection (0)</span>
         </button>
       </div>
     </div>
 
-    <!-- Camera View -->
     <div id="cameraView" class="content hidden">
       <div class="card">
         <h2>Scan Wine Label</h2>
@@ -608,15 +382,12 @@
             <button class="capture-btn" onclick="capturePhoto()"></button>
           </div>
         </div>
-        <div class="skip-scan">
-          <button onclick="manualEntry()">Skip scan and enter manually</button>
-        </div>
+        <div class="skip-scan"><button onclick="manualEntry()">Skip scan and enter manually</button></div>
         <div style="height: 12px"></div>
         <button class="btn btn-secondary" onclick="goHome()">Cancel</button>
       </div>
     </div>
 
-    <!-- Processing View -->
     <div id="processingView" class="content hidden">
       <div class="card processing">
         <div class="spinner"></div>
@@ -625,52 +396,41 @@
       </div>
     </div>
 
-    <!-- Result View -->
     <div id="resultView" class="content hidden">
       <div class="card">
-        <img id="capturedImage" class="image-preview" alt="Wine label">
+        <div id="imageContainer"></div>
         <h2>Wine Details</h2>
         <p class="subtitle">Edit any fields as needed</p>
-        
         <div class="form-group">
           <label>Wine Name *</label>
           <input type="text" id="wineName" placeholder="e.g., Château Margaux">
           <div class="help-text">Required field</div>
         </div>
-        
         <div class="form-group">
           <label>Vintage Year</label>
           <input type="number" id="wineVintage" placeholder="e.g., 2018" min="1900" max="2025">
         </div>
-        
         <div class="form-group">
           <label>Producer / Winery</label>
           <input type="text" id="wineProducer" placeholder="e.g., Château Margaux">
         </div>
-        
         <div class="form-group">
           <label>Region / Appellation</label>
           <input type="text" id="wineRegion" placeholder="e.g., Bordeaux, France">
         </div>
-        
         <div class="form-group">
           <label>Varietal / Blend</label>
           <input type="text" id="wineVarietal" placeholder="e.g., Cabernet Sauvignon">
         </div>
-        
         <div class="btn-group">
           <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
-            <span>💾</span>
-            <span>Save to Collection</span>
+            <span>💾</span><span>Save to Collection</span>
           </button>
-          <button class="btn btn-secondary" onclick="goHome()" style="flex: 1">
-            Cancel
-          </button>
+          <button class="btn btn-secondary" onclick="goHome()" style="flex: 1">Cancel</button>
         </div>
       </div>
     </div>
 
-    <!-- Collection View -->
     <div id="collectionView" class="content hidden">
       <h2 style="margin-bottom: 16px; color: #1f2937;">My Wines</h2>
       <div id="wineList" class="wine-list"></div>
@@ -681,104 +441,59 @@
       </div>
     </div>
 
-    <!-- Detail View -->
     <div id="detailView" class="content hidden">
       <div class="card" id="detailCard"></div>
     </div>
 
-    <!-- Settings View -->
     <div id="settingsView" class="content hidden">
       <div class="card">
         <h2>Settings</h2>
         <p class="subtitle">Configure AI wine recognition</p>
-        
         <div class="form-group">
           <label>OpenAI API Key</label>
           <input type="password" id="apiKeyInput" placeholder="sk-...">
           <div class="help-text">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #9333ea;">platform.openai.com</a></div>
-          <div class="help-text" style="margin-top: 8px;">This enables AI-powered wine label recognition. Your key is stored locally on your device.</div>
         </div>
-        
         <div class="btn-group">
           <button class="btn btn-primary" onclick="saveSettings()">
-            <span>💾</span>
-            <span>Save API Key</span>
+            <span>💾</span><span>Save API Key</span>
           </button>
-          <button class="btn btn-secondary" onclick="goHome()">
-            Cancel
-          </button>
-        </div>
-        
-        <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #f3f4f6;">
-          <h3 style="font-size: 16px; margin-bottom: 8px;">How to get an API key:</h3>
-          <ol style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-left: 20px;">
-            <li>Visit <a href="https://platform.openai.com/signup" target="_blank" style="color: #9333ea;">platform.openai.com/signup</a></li>
-            <li>Create an account or sign in</li>
-            <li>Go to API Keys section</li>
-            <li>Click "Create new secret key"</li>
-            <li>Copy and paste it above</li>
-          </ol>
-          <div class="help-text" style="margin-top: 12px;">Note: OpenAI charges per API call (~$0.01 per wine scan). You'll need to add payment info.</div>
+          <button class="btn btn-secondary" onclick="goHome()">Cancel</button>
         </div>
       </div>
     </div>
 
-    <!-- Comparison View -->
-    <div id="comparisonView" class="content hidden">
-      <div class="card comparison-view">
-        <h2>Rank Your Wine</h2>
-        <p class="comparison-prompt">Which wine did you prefer?</p>
-        
-        <div class="comparison-options" id="comparisonOptions"></div>
-        
-        <div class="comparison-controls">
-          <button class="btn btn-secondary" onclick="finishRanking()">
-            Done Ranking
-          </button>
-        </div>
-        
-        <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #f3f4f6; text-align: center;">
-          <p style="color: #6b7280; font-size: 14px;">
-            Compare this wine to others in the same category.<br>
-            Rankings are on a 1-10 scale with decimals (e.g., 8.7)
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sentiment Prompt View -->
     <div id="sentimentView" class="content hidden">
       <div class="card text-center">
         <div class="wine-icon">🍷</div>
         <h2 id="sentimentWineName">Wine Name</h2>
         <p class="subtitle">How did you feel about this wine?</p>
-        
         <div class="option-buttons">
           <button class="btn btn-primary" onclick="setSentiment('yes')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-            <span>😍</span>
-            <span>I Loved It</span>
+            <span>😍</span><span>I Loved It</span>
           </button>
-          
           <button class="btn btn-secondary" onclick="setSentiment('ok')">
-            <span>😊</span>
-            <span>It Was OK</span>
+            <span>😊</span><span>It Was OK</span>
           </button>
-          
           <button class="btn btn-secondary" onclick="setSentiment('no')" style="border-color: #dc2626; color: #dc2626;">
-            <span>😐</span>
-            <span>Didn't Like It</span>
+            <span>😐</span><span>Didn't Like It</span>
           </button>
         </div>
-        
         <div style="margin-top: 24px;">
-          <button class="btn btn-secondary" onclick="skipRanking()">
-            Skip Ranking
-          </button>
+          <button class="btn btn-secondary" onclick="skipRanking()">Skip Ranking</button>
         </div>
       </div>
     </div>
 
-    <!-- Floating Action Button -->
+    <div id="comparisonView" class="content hidden">
+      <div class="card">
+        <h2>Rank Your Wine</h2>
+        <p class="comparison-prompt">Which wine did you prefer?</p>
+        <div class="comparison-options" id="comparisonOptions"></div>
+        <button class="btn btn-secondary" onclick="finishRanking()">Done Ranking</button>
+      </div>
+    </div>
+
     <button class="fab hidden" id="fab" onclick="startCamera()">📷</button>
   </div>
 
@@ -788,46 +503,37 @@
     let stream = null;
     let facingMode = 'environment';
     let currentComparison = null;
+    let currentImageData = null;
 
-    // Migrate old wines to new format
-    wines = wines.map(w => ({
-      ...w,
-      score: w.score || null,
-      sentiment: w.sentiment || null,
-      comparisons: w.comparisons || 0
-    }));
+    function isValidImage(img) {
+      return img && typeof img === 'string' && img.startsWith('data:image/') && img.length > 100;
+    }
 
-    function showView(viewId) {
-      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView', 'settingsView', 'comparisonView', 'sentimentView'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-      });
-      document.getElementById(viewId).classList.remove('hidden');
-      
-      document.querySelector('.close-btn').classList.toggle('hidden', viewId === 'homeView');
-      document.getElementById('fab').classList.toggle('hidden', viewId === 'homeView' || viewId === 'cameraView');
+    // Clean existing data
+    wines = wines.map(w => ({...w, image: isValidImage(w.image) ? w.image : null, score: w.score || null, sentiment: w.sentiment || null, comparisons: w.comparisons || 0}));
+    localStorage.setItem('wines', JSON.stringify(wines));
+
+    function showView(v) {
+      ['homeView','cameraView','processingView','resultView','collectionView','detailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(v).classList.remove('hidden');
+      document.querySelector('.close-btn').classList.toggle('hidden', v === 'homeView');
+      document.getElementById('fab').classList.toggle('hidden', v === 'homeView' || v === 'cameraView');
     }
 
     function goHome() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      currentImageData = null;
       showView('homeView');
     }
 
     async function startCamera() {
       showView('cameraView');
       try {
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-        }
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: facingMode },
-          audio: false 
-        });
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({video: {facingMode}, audio: false});
         document.getElementById('video').srcObject = stream;
       } catch (err) {
-        alert('Camera access denied. Please enable camera permissions in your browser settings.');
+        alert('Camera access denied');
         goHome();
       }
     }
@@ -838,137 +544,41 @@
     }
 
     function capturePhoto() {
-      const video = document.getElementById('video');
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-
-      const imageData = canvas.toDataURL('image/jpeg', 0.9);
-      processImage(imageData);
+      const v = document.getElementById('video');
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      currentImageData = c.toDataURL('image/jpeg', 0.9);
+      processImage(currentImageData);
     }
 
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          processImage(e.target.result);
-        };
-        reader.readAsDataURL(file);
+    function handleFileUpload(e) {
+      const f = e.target.files[0];
+      if (f) {
+        const r = new FileReader();
+        r.onload = e => { currentImageData = e.target.result; processImage(e.target.result); };
+        r.readAsDataURL(f);
       }
     }
 
-    async function processImage(imageData) {
+    async function processImage(img) {
       showView('processingView');
-      document.getElementById('processingStatus').textContent = 'Analyzing wine label with AI...';
-      
-      try {
-        // Try OpenAI GPT-4 Vision
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + (localStorage.getItem('openai_key') || '')
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: imageData
-                    }
-                  },
-                  {
-                    type: "text",
-                    text: `Analyze this wine label and extract the following information. Return ONLY a JSON object with these fields (use empty strings if information is not visible):
-
-{
-  "name": "full wine name",
-  "vintage": "year only (e.g., 2018)",
-  "producer": "winery or château name",
-  "region": "region and country (e.g., Bordeaux, France)",
-  "varietal": "grape variety or blend type"
-}
-
-Be precise and only include information you can clearly see on the label.`
-                  }
-                ]
-              }
-            ],
-            max_tokens: 500
-          })
-        });
-
-        if (openaiResponse.ok) {
-          const data = await openaiResponse.json();
-          
-          if (data.choices && data.choices[0] && data.choices[0].message) {
-            let responseText = data.choices[0].message.content.trim();
-            
-            // Remove markdown code fences if present
-            responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            
-            const wineData = JSON.parse(responseText);
-            
-            document.getElementById('capturedImage').src = imageData;
-            document.getElementById('wineName').value = wineData.name || '';
-            document.getElementById('wineVintage').value = wineData.vintage || '';
-            document.getElementById('wineProducer').value = wineData.producer || '';
-            document.getElementById('wineRegion').value = wineData.region || '';
-            document.getElementById('wineVarietal').value = wineData.varietal || '';
-            
-            showView('resultView');
-            
-            if (!wineData.name && !wineData.vintage) {
-              alert('Could not identify wine details. Please enter manually.');
-            }
-            return;
-          }
-        }
-        
-        // If OpenAI fails, check if API key is missing
-        if (openaiResponse.status === 401) {
-          const apiKey = prompt('OpenAI API key required. Enter your API key (get one at platform.openai.com):');
-          if (apiKey) {
-            localStorage.setItem('openai_key', apiKey);
-            // Retry with the new key
-            processImage(imageData);
-            return;
-          }
-        }
-        
-        throw new Error('AI analysis failed');
-        
-      } catch (err) {
-        console.error('AI Analysis Error:', err);
-        
-        // Fallback: Just show the form with the image
-        document.getElementById('capturedImage').src = imageData;
-        document.getElementById('wineName').value = '';
-        document.getElementById('wineVintage').value = '';
-        document.getElementById('wineProducer').value = '';
-        document.getElementById('wineRegion').value = '';
-        document.getElementById('wineVarietal').value = '';
-        
-        showView('resultView');
-        alert('AI analysis not available. Please enter wine details manually.');
-      }
+      const c = document.getElementById('imageContainer');
+      c.innerHTML = `<img src="${img}" class="image-preview">`;
+      document.getElementById('wineName').value = '';
+      document.getElementById('wineVintage').value = '';
+      document.getElementById('wineProducer').value = '';
+      document.getElementById('wineRegion').value = '';
+      document.getElementById('wineVarietal').value = '';
+      showView('resultView');
     }
 
     function manualEntry() {
-      // For manual entry, don't set a default image - we'll use emoji instead
-      document.getElementById('capturedImage').src = '';
+      currentImageData = null;
+      const c = document.getElementById('imageContainer');
+      c.innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
       document.getElementById('wineName').value = '';
       document.getElementById('wineVintage').value = '';
       document.getElementById('wineProducer').value = '';
@@ -978,17 +588,11 @@ Be precise and only include information you can clearly see on the label.`
     }
 
     function saveWine() {
-      const name = document.getElementById('wineName').value.trim();
-      
-      if (!name) {
-        alert('Please enter a wine name');
-        document.getElementById('wineName').focus();
-        return;
-      }
-      
-      const wine = {
+      const n = document.getElementById('wineName').value.trim();
+      if (!n) { alert('Please enter a wine name'); return; }
+      const w = {
         id: Date.now(),
-        name: name,
+        name: n,
         vintage: document.getElementById('wineVintage').value || '',
         producer: document.getElementById('wineProducer').value || '',
         region: document.getElementById('wineRegion').value || '',
@@ -997,152 +601,90 @@ Be precise and only include information you can clearly see on the label.`
         sentiment: null,
         comparisons: 0,
         notes: '',
-        image: document.getElementById('capturedImage').src || null,
+        image: isValidImage(currentImageData) ? currentImageData : null,
         dateAdded: new Date().toISOString().split('T')[0]
       };
-      
-      wines.unshift(wine);
+      wines.unshift(w);
       localStorage.setItem('wines', JSON.stringify(wines));
       updateCollectionCount();
-      
-      // Start Beli-style sentiment ranking
-      currentWineId = wine.id;
+      currentWineId = w.id;
+      currentImageData = null;
       showSentimentPrompt();
     }
 
     function showCollection() {
       const list = document.getElementById('wineList');
       const empty = document.getElementById('emptyState');
-      
       if (wines.length === 0) {
         list.innerHTML = '';
         empty.classList.remove('hidden');
       } else {
         empty.classList.add('hidden');
-        
-        // Sort by score (highest first), then by sentiment
-        const sortedWines = [...wines].sort((a, b) => {
-          if (a.score === null && b.score === null) return 0;
-          if (a.score === null) return 1;
-          if (b.score === null) return -1;
-          return b.score - a.score;
-        });
-        
-        list.innerHTML = sortedWines.map((wine) => {
-          const hasScore = wine.score !== null;
-          const scoreDisplay = hasScore ? wine.score.toFixed(1) : 'Unranked';
-          const hasImage = wine.image && wine.image.startsWith('data:image');
-          
-          return `
-          <div class="wine-item" onclick="showDetail(${wine.id})">
-            ${hasImage ? 
-              `<img src="${wine.image}" class="wine-item-image" alt="${wine.name}">` :
-              `<div class="wine-emoji">🍷</div>`
-            }
+        const sorted = [...wines].sort((a, b) => (b.score || 0) - (a.score || 0));
+        list.innerHTML = sorted.map(w => `
+          <div class="wine-item" onclick="showDetail(${w.id})">
+            ${isValidImage(w.image) ? `<img src="${w.image}" class="wine-item-image">` : `<div class="wine-emoji">🍷</div>`}
             <div class="wine-info">
-              <div class="wine-name">${wine.name}</div>
-              <div class="wine-meta">
-                ${wine.vintage ? wine.vintage + ' • ' : ''}${wine.region || wine.producer || 'Unknown region'}
-              </div>
+              <div class="wine-name">${w.name}</div>
+              <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
               <div class="rank-section">
-                <span class="rank-badge ${!hasScore ? 'unranked' : ''}">${scoreDisplay}</span>
+                <span class="rank-badge ${!w.score ? 'unranked' : ''}">${w.score ? w.score.toFixed(1) : 'Unranked'}</span>
               </div>
             </div>
           </div>
-        `}).join('');
+        `).join('');
       }
-      
       showView('collectionView');
     }
 
     function showDetail(id) {
-      const wine = wines.find(w => w.id === id);
+      const w = wines.find(x => x.id === id);
       currentWineId = id;
-      
-      const hasScore = wine.score !== null;
-      const scoreDisplay = hasScore ? wine.score.toFixed(1) : 'Not yet ranked';
-      
-      const sentimentEmoji = {
-        'yes': '😍 Loved It',
-        'ok': '😊 It Was OK',
-        'no': '😐 Didn\'t Like It'
-      };
-      
-      const card = document.getElementById('detailCard');
-      card.innerHTML = `
-        ${wine.image && wine.image.startsWith('data:image') ? 
-          `<img src="${wine.image}" class="image-preview" alt="Wine label">` :
-          `<div style="text-align: center; padding: 40px; background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%); border-radius: 12px; margin-bottom: 16px;">
-            <div style="font-size: 80px;">🍷</div>
-          </div>`
-        }
-        <h2>${wine.name}</h2>
-        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
-        
-        ${wine.producer ? `<div class="form-group">
-          <label>Producer</label>
-          <div style="color: #6b7280">${wine.producer}</div>
-        </div>` : ''}
-        
-        ${wine.region ? `<div class="form-group">
-          <label>Region</label>
-          <div style="color: #6b7280">${wine.region}</div>
-        </div>` : ''}
-        
-        ${wine.varietal ? `<div class="form-group">
-          <label>Varietal</label>
-          <div style="color: #6b7280">${wine.varietal}</div>
-        </div>` : ''}
-        
+      const sent = {'yes': '😍 Loved It', 'ok': '😊 It Was OK', 'no': '😐 Didn\'t Like It'};
+      document.getElementById('detailCard').innerHTML = `
+        ${isValidImage(w.image) ? `<img src="${w.image}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>'}
+        <h2>${w.name}</h2>
+        <p class="subtitle">${w.vintage || 'Vintage not specified'}</p>
+        ${w.producer ? `<div class="form-group"><label>Producer</label><div style="color: #6b7280">${w.producer}</div></div>` : ''}
+        ${w.region ? `<div class="form-group"><label>Region</label><div style="color: #6b7280">${w.region}</div></div>` : ''}
+        ${w.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #6b7280">${w.varietal}</div></div>` : ''}
         <div class="form-group">
           <label>Your Rating</label>
           <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <span class="rank-badge ${!hasScore ? 'unranked' : ''}" style="font-size: 24px;">
-              ${scoreDisplay}
-            </span>
-            ${wine.sentiment ? `<span style="font-size: 18px;">${sentimentEmoji[wine.sentiment]}</span>` : ''}
+            <span class="rank-badge ${!w.score ? 'unranked' : ''}" style="font-size: 24px;">${w.score ? w.score.toFixed(1) : 'Not yet ranked'}</span>
+            ${w.sentiment ? `<span style="font-size: 18px;">${sent[w.sentiment]}</span>` : ''}
           </div>
-          ${hasScore ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+          ${w.score ? `<div class="help-text">Based on ${w.comparisons} comparison${w.comparisons !== 1 ? 's' : ''}</div>` : ''}
           <div style="margin-top: 12px;">
             <button class="btn btn-secondary" onclick="reRankWine(${id})" style="width: auto; padding: 8px 16px; font-size: 14px;">
-              ${hasScore ? 'Re-rank Wine' : 'Rank Wine'}
+              ${w.score ? 'Re-rank Wine' : 'Rank Wine'}
             </button>
           </div>
         </div>
-        
         <div class="form-group">
           <label>Tasting Notes</label>
-          <textarea id="wineNotes" placeholder="Add your tasting notes, food pairings, or memories...">${wine.notes}</textarea>
+          <textarea id="wineNotes" placeholder="Add your tasting notes...">${w.notes}</textarea>
         </div>
-        
         <div class="form-group">
           <label>Date Added</label>
-          <div style="color: #6b7280">${wine.dateAdded}</div>
+          <div style="color: #6b7280">${w.dateAdded}</div>
         </div>
-        
         <div class="btn-group">
-          <button class="btn btn-primary" onclick="saveNotes()">
-            <span>💾</span>
-            <span>Save Notes</span>
-          </button>
-          <button class="btn btn-danger" onclick="deleteWine()">
-            🗑️ Delete
-          </button>
+          <button class="btn btn-primary" onclick="saveNotes()"><span>💾</span><span>Save Notes</span></button>
+          <button class="btn btn-danger" onclick="deleteWine()">🗑️ Delete</button>
         </div>
       `;
-      
       showView('detailView');
     }
 
     function saveNotes() {
-      const wine = wines.find(w => w.id === currentWineId);
-      wine.notes = document.getElementById('wineNotes').value;
+      wines.find(w => w.id === currentWineId).notes = document.getElementById('wineNotes').value;
       localStorage.setItem('wines', JSON.stringify(wines));
       alert('Notes saved!');
     }
 
     function deleteWine() {
-      if (confirm('Delete this wine from your collection?')) {
+      if (confirm('Delete this wine?')) {
         wines = wines.filter(w => w.id !== currentWineId);
         localStorage.setItem('wines', JSON.stringify(wines));
         updateCollectionCount();
@@ -1155,210 +697,133 @@ Be precise and only include information you can clearly see on the label.`
     }
 
     function showSettings() {
-      const apiKey = localStorage.getItem('openai_key') || '';
-      document.getElementById('apiKeyInput').value = apiKey;
+      document.getElementById('apiKeyInput').value = localStorage.getItem('openai_key') || '';
       showView('settingsView');
     }
 
     function saveSettings() {
-      const apiKey = document.getElementById('apiKeyInput').value.trim();
-      if (apiKey) {
-        localStorage.setItem('openai_key', apiKey);
-        alert('API key saved! AI wine recognition is now enabled.');
+      const k = document.getElementById('apiKeyInput').value.trim();
+      if (k) {
+        localStorage.setItem('openai_key', k);
+        alert('API key saved!');
       } else {
         localStorage.removeItem('openai_key');
-        alert('API key removed. Manual entry only.');
+        alert('API key removed.');
       }
       goHome();
     }
 
-    // Beli-style sentiment and ranking system
     function showSentimentPrompt() {
-      const wine = wines.find(w => w.id === currentWineId);
-      document.getElementById('sentimentWineName').textContent = wine.name;
+      const w = wines.find(x => x.id === currentWineId);
+      document.getElementById('sentimentWineName').textContent = w.name;
       showView('sentimentView');
     }
 
-    function setSentiment(sentiment) {
-      const wine = wines.find(w => w.id === currentWineId);
-      wine.sentiment = sentiment;
+    function setSentiment(s) {
+      wines.find(w => w.id === currentWineId).sentiment = s;
       localStorage.setItem('wines', JSON.stringify(wines));
-      
-      // Start comparison ranking based on sentiment
-      startComparisonRanking(sentiment);
+      startComparisonRanking(s);
     }
 
     function skipRanking() {
-      if (confirm('Skip ranking? You can rank this wine later from its detail page.')) {
-        showCollection();
-      }
+      if (confirm('Skip ranking? You can rank later from detail page.')) showCollection();
     }
 
-    function reRankWine(wineId) {
-      currentWineId = wineId;
+    function reRankWine(id) {
+      currentWineId = id;
       showSentimentPrompt();
     }
 
-    function startComparisonRanking(sentiment) {
-      const currentWine = wines.find(w => w.id === currentWineId);
-      
-      // Get wines with same sentiment that have scores
-      const sameSentimentWines = wines.filter(w => 
-        w.sentiment === sentiment && 
-        w.id !== currentWineId && 
-        w.score !== null
-      );
-      
-      if (sameSentimentWines.length === 0) {
-        // First wine with this sentiment
-        currentWine.score = getInitialScore(sentiment);
-        currentWine.comparisons = 0;
+    function startComparisonRanking(s) {
+      const w = wines.find(x => x.id === currentWineId);
+      const same = wines.filter(x => x.sentiment === s && x.id !== currentWineId && x.score !== null);
+      if (same.length === 0) {
+        w.score = s === 'yes' ? 9.0 : s === 'ok' ? 5.5 : 2.0;
+        w.comparisons = 0;
         recalculateAllScores();
         localStorage.setItem('wines', JSON.stringify(wines));
         showCollection();
         return;
       }
-      
-      // Initialize tracking for comparisons
-      currentComparison = {
-        newWine: currentWine,
-        sentiment: sentiment,
-        comparisonResults: [], // Track wins/losses
-        totalComparisons: 0
-      };
-      
-      // Compare against all wines in same sentiment (or max 5)
+      currentComparison = {newWine: w, sentiment: s, comparisonResults: [], totalComparisons: 0};
       compareNextWine();
     }
 
     function compareNextWine() {
-      const { newWine, sentiment, comparisonResults, totalComparisons } = currentComparison;
-      
-      const sameSentimentWines = wines.filter(w => 
-        w.sentiment === sentiment && 
-        w.id !== newWine.id && 
-        w.score !== null
-      );
-      
-      // Limit to 5 comparisons max
-      if (totalComparisons >= Math.min(5, sameSentimentWines.length)) {
-        // Calculate final score based on win rate
+      const {newWine, sentiment, comparisonResults, totalComparisons} = currentComparison;
+      const same = wines.filter(w => w.sentiment === sentiment && w.id !== newWine.id && w.score !== null);
+      if (totalComparisons >= Math.min(5, same.length)) {
         calculateFinalScore();
         return;
       }
-      
-      // Pick next wine to compare (prioritize wines we haven't compared yet)
       const compared = comparisonResults.map(r => r.opponentId);
-      const uncompared = sameSentimentWines.filter(w => !compared.includes(w.id));
-      
-      const opponent = uncompared.length > 0 
-        ? uncompared[0] 
-        : sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
-      
-      currentComparison.opponent = opponent;
+      const uncompared = same.filter(w => !compared.includes(w.id));
+      const opp = uncompared.length > 0 ? uncompared[0] : same[Math.floor(Math.random() * same.length)];
+      currentComparison.opponent = opp;
       displayComparison();
     }
 
+    function displayComparison() {
+      showView('comparisonView');
+      const {newWine, opponent} = currentComparison;
+      document.getElementById('comparisonOptions').innerHTML = `
+        <div class="wine-comparison-card" onclick="selectWinner('new')">
+          ${isValidImage(newWine.image) ? `<img src="${newWine.image}">` : '<div class="wine-icon-large">🍷</div>'}
+          <h3>${newWine.name}</h3>
+          <p class="vintage">${newWine.vintage || 'N/A'}</p>
+        </div>
+        <div class="wine-comparison-card" onclick="selectWinner('opponent')">
+          ${isValidImage(opponent.image) ? `<img src="${opponent.image}">` : '<div class="wine-icon-large">🍷</div>'}
+          <h3>${opponent.name}</h3>
+          <p class="vintage">${opponent.vintage || 'N/A'}${opponent.score ? ' • ' + opponent.score.toFixed(1) : ''}</p>
+        </div>
+      `;
+    }
+
     function selectWinner(winner) {
-      const { newWine, opponent, sentiment, comparisonResults } = currentComparison;
-      
-      // Record the result
-      comparisonResults.push({
-        opponentId: opponent.id,
-        opponentScore: opponent.score,
-        newWineWon: winner === 'new'
-      });
-      
+      const {newWine, opponent, comparisonResults} = currentComparison;
+      comparisonResults.push({opponentId: opponent.id, opponentScore: opponent.score, newWineWon: winner === 'new'});
       currentComparison.totalComparisons++;
-      
-      // Continue to next comparison
       compareNextWine();
     }
 
     function calculateFinalScore() {
-      const { newWine, sentiment, comparisonResults } = currentComparison;
-      
-      // Calculate wins and average opponent score
+      const {newWine, sentiment, comparisonResults} = currentComparison;
       const wins = comparisonResults.filter(r => r.newWineWon).length;
       const total = comparisonResults.length;
       const winRate = wins / total;
-      
-      const avgOpponentScore = comparisonResults.reduce((sum, r) => sum + r.opponentScore, 0) / total;
-      
-      // Score based on win rate relative to opponent scores
-      // If you beat everyone, you're above the average
-      // If you lost to everyone, you're below
-      const scoreAdjustment = (winRate - 0.5) * 0.8; // Max ±0.4 adjustment
-      newWine.score = Math.max(
-        getMinScore(sentiment),
-        Math.min(
-          getMaxScore(sentiment),
-          avgOpponentScore + scoreAdjustment
-        )
-      );
-      
+      const avgOpp = comparisonResults.reduce((sum, r) => sum + r.opponentScore, 0) / total;
+      const adj = (winRate - 0.5) * 0.8;
+      newWine.score = Math.max(getMinScore(sentiment), Math.min(getMaxScore(sentiment), avgOpp + adj));
       newWine.comparisons = total;
-      
-      // Recalculate all scores to maintain proper ordering
       recalculateAllScores();
-      
       localStorage.setItem('wines', JSON.stringify(wines));
       finishRanking();
     }
 
     function recalculateAllScores() {
-      // Sort wines by sentiment, then by their comparisons and results
-      const sentiments = ['yes', 'ok', 'no'];
-      let currentRank = 10.0;
-      
-      sentiments.forEach(sentiment => {
-        const sentimentWines = wines
-          .filter(w => w.sentiment === sentiment && w.score !== null)
-          .sort((a, b) => b.score - a.score);
-        
-        if (sentimentWines.length === 0) return;
-        
-        // Assign scores from top of range downward
-        const maxScore = getMaxScore(sentiment);
-        const minScore = getMinScore(sentiment);
-        const range = maxScore - minScore;
-        
-        sentimentWines.forEach((wine, index) => {
-          // Preserve relative ordering but compress into range
-          const relativePosition = index / Math.max(1, sentimentWines.length - 1);
-          wine.score = maxScore - (relativePosition * range);
+      ['yes', 'ok', 'no'].forEach(s => {
+        const sw = wines.filter(w => w.sentiment === s && w.score !== null).sort((a, b) => b.score - a.score);
+        if (sw.length === 0) return;
+        const max = getMaxScore(s);
+        const min = getMinScore(s);
+        const range = max - min;
+        sw.forEach((w, i) => {
+          const rel = i / Math.max(1, sw.length - 1);
+          w.score = max - (rel * range);
         });
       });
     }
 
-    function getInitialScore(sentiment) {
-      // Find the median score for this sentiment, or use default
-      const sentimentWines = wines.filter(w => w.sentiment === sentiment && w.score !== null);
-      if (sentimentWines.length === 0) {
-        return sentiment === 'yes' ? 9.0 : sentiment === 'ok' ? 5.5 : 2.0;
-      }
-      
-      const scores = sentimentWines.map(w => w.score).sort((a, b) => b - a);
-      return scores[Math.floor(scores.length / 2)];
-    }
-
-    function getMaxScore(sentiment) {
-      return sentiment === 'yes' ? 10.0 : sentiment === 'ok' ? 7.0 : 4.0;
-    }
-
-    function getMinScore(sentiment) {
-      return sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.1 : 1.0;
-    }
+    function getMaxScore(s) { return s === 'yes' ? 10.0 : s === 'ok' ? 7.0 : 4.0; }
+    function getMinScore(s) { return s === 'yes' ? 7.0 : s === 'ok' ? 4.1 : 1.0; }
 
     function finishRanking() {
-      const wine = wines.find(w => w.id === currentWineId);
-      if (wine.score !== null) {
-        alert(`Ranked! Your wine scored ${wine.score.toFixed(1)}/10`);
-      }
+      const w = wines.find(x => x.id === currentWineId);
+      if (w.score !== null) alert(`Ranked! Your wine scored ${w.score.toFixed(1)}/10`);
       showCollection();
     }
 
-    // Initialize
     updateCollectionCount();
   </script>
 </body>
