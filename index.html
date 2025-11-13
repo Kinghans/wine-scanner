@@ -702,22 +702,54 @@
     <!-- Comparison View -->
     <div id="comparisonView" class="content hidden">
       <div class="card comparison-view">
-        <h2>Rank Your Wines</h2>
+        <h2>Rank Your Wine</h2>
         <p class="comparison-prompt">Which wine did you prefer?</p>
         
         <div class="comparison-options" id="comparisonOptions"></div>
         
         <div class="comparison-controls">
-          <button class="btn btn-secondary" onclick="skipComparison()">
-            Can't Decide / Skip
+          <button class="btn btn-secondary" onclick="finishRanking()">
+            Done Ranking
           </button>
         </div>
         
         <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #f3f4f6; text-align: center;">
           <p style="color: #6b7280; font-size: 14px;">
-            Compare wines to build your personal ranking.<br>
-            The more you compare, the more accurate your rankings become!
+            Compare this wine to others in the same category.<br>
+            Rankings are on a 1-10 scale with decimals (e.g., 8.7)
           </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sentiment Prompt View -->
+    <div id="sentimentView" class="content hidden">
+      <div class="card text-center">
+        <div class="wine-icon">🍷</div>
+        <h2 id="sentimentWineName">Wine Name</h2>
+        <p class="subtitle">How did you feel about this wine?</p>
+        
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="setSentiment('yes')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <span>😍</span>
+            <span>I Loved It</span>
+          </button>
+          
+          <button class="btn btn-secondary" onclick="setSentiment('ok')">
+            <span>😊</span>
+            <span>It Was OK</span>
+          </button>
+          
+          <button class="btn btn-secondary" onclick="setSentiment('no')" style="border-color: #dc2626; color: #dc2626;">
+            <span>😐</span>
+            <span>Didn't Like It</span>
+          </button>
+        </div>
+        
+        <div style="margin-top: 24px;">
+          <button class="btn btn-secondary" onclick="skipRanking()">
+            Skip Ranking
+          </button>
         </div>
       </div>
     </div>
@@ -736,13 +768,13 @@
     // Migrate old wines to new format
     wines = wines.map(w => ({
       ...w,
-      eloScore: w.eloScore || 1500,
-      comparisons: w.comparisons || 0,
-      rating: null
+      score: w.score || null,
+      sentiment: w.sentiment || null,
+      comparisons: w.comparisons || 0
     }));
 
     function showView(viewId) {
-      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView', 'settingsView', 'comparisonView'].forEach(id => {
+      ['homeView', 'cameraView', 'processingView', 'resultView', 'collectionView', 'detailView', 'settingsView', 'comparisonView', 'sentimentView'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(viewId).classList.remove('hidden');
@@ -939,8 +971,8 @@ Be precise and only include information you can clearly see on the label.`
         producer: document.getElementById('wineProducer').value || '',
         region: document.getElementById('wineRegion').value || '',
         varietal: document.getElementById('wineVarietal').value || '',
-        rating: null,
-        eloScore: 1500,
+        score: null,
+        sentiment: null, // 'yes', 'ok', 'no'
         comparisons: 0,
         notes: '',
         image: document.getElementById('capturedImage').src,
@@ -951,16 +983,9 @@ Be precise and only include information you can clearly see on the label.`
       localStorage.setItem('wines', JSON.stringify(wines));
       updateCollectionCount();
       
-      // Prompt to rank if we have 2+ wines
-      if (wines.length >= 2) {
-        if (confirm('Wine saved! Would you like to rank it against your other wines?')) {
-          startComparison();
-        } else {
-          showCollection();
-        }
-      } else {
-        showCollection();
-      }
+      // Start Beli-style sentiment ranking
+      currentWineId = wine.id;
+      showSentimentPrompt();
     }
 
     function showCollection() {
@@ -973,12 +998,17 @@ Be precise and only include information you can clearly see on the label.`
       } else {
         empty.classList.add('hidden');
         
-        // Sort by ELO score
-        const sortedWines = [...wines].sort((a, b) => b.eloScore - a.eloScore);
+        // Sort by score (highest first), then by sentiment
+        const sortedWines = [...wines].sort((a, b) => {
+          if (a.score === null && b.score === null) return 0;
+          if (a.score === null) return 1;
+          if (b.score === null) return -1;
+          return b.score - a.score;
+        });
         
-        list.innerHTML = sortedWines.map((wine, index) => {
-          const rank = index + 1;
-          const hasRanking = wine.comparisons > 0;
+        list.innerHTML = sortedWines.map((wine) => {
+          const hasScore = wine.score !== null;
+          const scoreDisplay = hasScore ? wine.score.toFixed(1) : 'Unranked';
           
           return `
           <div class="wine-item" onclick="showDetail(${wine.id})">
@@ -989,7 +1019,7 @@ Be precise and only include information you can clearly see on the label.`
                 ${wine.vintage ? wine.vintage + ' • ' : ''}${wine.region || wine.producer || 'Unknown region'}
               </div>
               <div class="rank-section">
-                <span class="rank-badge ${!hasRanking ? 'unranked' : ''}">${hasRanking ? `#${rank} of ${wines.length}` : 'Unranked'}</span>
+                <span class="rank-badge ${!hasScore ? 'unranked' : ''}">${scoreDisplay}</span>
               </div>
             </div>
           </div>
@@ -1003,10 +1033,14 @@ Be precise and only include information you can clearly see on the label.`
       const wine = wines.find(w => w.id === id);
       currentWineId = id;
       
-      // Calculate rank
-      const sortedWines = [...wines].sort((a, b) => b.eloScore - a.eloScore);
-      const rank = sortedWines.findIndex(w => w.id === id) + 1;
-      const hasRanking = wine.comparisons > 0;
+      const hasScore = wine.score !== null;
+      const scoreDisplay = hasScore ? wine.score.toFixed(1) : 'Not yet ranked';
+      
+      const sentimentEmoji = {
+        'yes': '😍 Loved It',
+        'ok': '😊 It Was OK',
+        'no': '😐 Didn\'t Like It'
+      };
       
       const card = document.getElementById('detailCard');
       card.innerHTML = `
@@ -1030,16 +1064,19 @@ Be precise and only include information you can clearly see on the label.`
         </div>` : ''}
         
         <div class="form-group">
-          <label>Your Ranking</label>
+          <label>Your Rating</label>
           <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <span class="rank-badge ${!hasRanking ? 'unranked' : ''}" style="font-size: 18px;">
-              ${hasRanking ? `#${rank} of ${wines.length}` : 'Not yet ranked'}
+            <span class="rank-badge ${!hasScore ? 'unranked' : ''}" style="font-size: 24px;">
+              ${scoreDisplay}
             </span>
-            ${wines.length >= 2 ? `<button class="btn btn-secondary" onclick="startComparisonForWine(${id})" style="width: auto; padding: 8px 16px; font-size: 14px;">
-              Compare Now
-            </button>` : ''}
+            ${wine.sentiment ? `<span style="font-size: 18px;">${sentimentEmoji[wine.sentiment]}</span>` : ''}
           </div>
-          ${hasRanking ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+          ${hasScore ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+          <div style="margin-top: 12px;">
+            <button class="btn btn-secondary" onclick="reRankWine(${id})" style="width: auto; padding: 8px 16px; font-size: 14px;">
+              ${hasScore ? 'Re-rank Wine' : 'Rank Wine'}
+            </button>
+          </div>
         </div>
         
         <div class="form-group">
@@ -1104,83 +1141,147 @@ Be precise and only include information you can clearly see on the label.`
       goHome();
     }
 
-    // ELO Rating System for wine comparisons
-    function calculateElo(winner, loser) {
-      const K = 32; // K-factor (sensitivity)
-      const expectedWinner = 1 / (1 + Math.pow(10, (loser.eloScore - winner.eloScore) / 400));
-      const expectedLoser = 1 / (1 + Math.pow(10, (winner.eloScore - loser.eloScore) / 400));
-      
-      winner.eloScore = Math.round(winner.eloScore + K * (1 - expectedWinner));
-      loser.eloScore = Math.round(loser.eloScore + K * (0 - expectedLoser));
-      
-      winner.comparisons = (winner.comparisons || 0) + 1;
-      loser.comparisons = (loser.comparisons || 0) + 1;
+    // Beli-style sentiment and ranking system
+    function showSentimentPrompt() {
+      const wine = wines.find(w => w.id === currentWineId);
+      document.getElementById('sentimentWineName').textContent = wine.name;
+      showView('sentimentView');
     }
 
-    function startComparison() {
-      if (wines.length < 2) {
-        alert('You need at least 2 wines to start ranking!');
+    function setSentiment(sentiment) {
+      const wine = wines.find(w => w.id === currentWineId);
+      wine.sentiment = sentiment;
+      localStorage.setItem('wines', JSON.stringify(wines));
+      
+      // Start comparison ranking based on sentiment
+      startComparisonRanking(sentiment);
+    }
+
+    function skipRanking() {
+      if (confirm('Skip ranking? You can rank this wine later from its detail page.')) {
+        showCollection();
+      }
+    }
+
+    function reRankWine(wineId) {
+      currentWineId = wineId;
+      showSentimentPrompt();
+    }
+
+    function startComparisonRanking(sentiment) {
+      const currentWine = wines.find(w => w.id === currentWineId);
+      
+      // Get wines with same sentiment that have scores
+      const sameSentimentWines = wines.filter(w => 
+        w.sentiment === sentiment && 
+        w.id !== currentWineId && 
+        w.score !== null
+      );
+      
+      if (sameSentimentWines.length === 0) {
+        // First wine with this sentiment - assign base score
+        const baseScores = {
+          'yes': 8.0,
+          'ok': 5.0,
+          'no': 2.0
+        };
+        currentWine.score = baseScores[sentiment];
+        currentWine.comparisons = 0;
+        localStorage.setItem('wines', JSON.stringify(wines));
         showCollection();
         return;
       }
       
-      // Pick two random wines
-      const shuffled = [...wines].sort(() => Math.random() - 0.5);
-      currentComparison = [shuffled[0], shuffled[1]];
+      // Pick a random wine to compare against
+      const opponent = sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
+      currentComparison = {
+        newWine: currentWine,
+        opponent: opponent,
+        sentiment: sentiment,
+        remainingComparisons: Math.min(3, sameSentimentWines.length) // Max 3 comparisons
+      };
       
-      displayComparison();
-    }
-
-    function startComparisonForWine(wineId) {
-      if (wines.length < 2) {
-        alert('You need at least 2 wines to compare!');
-        return;
-      }
-      
-      const wine = wines.find(w => w.id === wineId);
-      const others = wines.filter(w => w.id !== wineId);
-      const opponent = others[Math.floor(Math.random() * others.length)];
-      
-      currentComparison = [wine, opponent];
       displayComparison();
     }
 
     function displayComparison() {
       showView('comparisonView');
       
+      const { newWine, opponent } = currentComparison;
       const options = document.getElementById('comparisonOptions');
-      options.innerHTML = currentComparison.map(wine => `
-        <div class="wine-comparison-card" onclick="selectWinner(${wine.id})">
-          <img src="${wine.image}" alt="${wine.name}">
-          <h3>${wine.name}</h3>
-          <p class="vintage">${wine.vintage || 'N/A'}</p>
+      
+      options.innerHTML = `
+        <div class="wine-comparison-card" onclick="selectWinner('new')">
+          <img src="${newWine.image}" alt="${newWine.name}">
+          <h3>${newWine.name}</h3>
+          <p class="vintage">${newWine.vintage || 'N/A'}</p>
         </div>
-      `).join('');
+        <div class="wine-comparison-card" onclick="selectWinner('opponent')">
+          <img src="${opponent.image}" alt="${opponent.name}">
+          <h3>${opponent.name}</h3>
+          <p class="vintage">${opponent.vintage || 'N/A'}${opponent.score ? ' • ' + opponent.score.toFixed(1) : ''}</p>
+        </div>
+      `;
     }
 
-    function selectWinner(winnerId) {
-      const winner = wines.find(w => w.id === winnerId);
-      const loser = currentComparison.find(w => w.id !== winnerId);
+    function selectWinner(winner) {
+      const { newWine, opponent, sentiment } = currentComparison;
       
-      calculateElo(winner, loser);
-      localStorage.setItem('wines', JSON.stringify(wines));
-      
-      // Ask if they want to continue
-      if (confirm('Wine ranked! Compare another pair?')) {
-        startComparison();
-      } else {
-        showCollection();
-      }
-    }
-
-    function skipComparison() {
-      if (confirm('Skip this comparison?')) {
-        if (confirm('Compare a different pair?')) {
-          startComparison();
+      if (winner === 'new') {
+        // New wine is better - adjust score higher
+        if (newWine.score === null) {
+          newWine.score = Math.min(opponent.score + 0.3, getMaxScore(sentiment));
         } else {
-          showCollection();
+          newWine.score = Math.min(newWine.score + 0.2, getMaxScore(sentiment));
+        }
+      } else {
+        // Opponent is better - adjust score lower
+        if (newWine.score === null) {
+          newWine.score = Math.max(opponent.score - 0.3, getMinScore(sentiment));
+        } else {
+          newWine.score = Math.max(newWine.score - 0.2, getMinScore(sentiment));
         }
       }
+      
+      newWine.comparisons = (newWine.comparisons || 0) + 1;
+      currentComparison.remainingComparisons--;
+      
+      localStorage.setItem('wines', JSON.stringify(wines));
+      
+      // Continue comparing or finish
+      if (currentComparison.remainingComparisons > 0) {
+        const sameSentimentWines = wines.filter(w => 
+          w.sentiment === sentiment && 
+          w.id !== currentWineId && 
+          w.score !== null &&
+          w.id !== opponent.id // Don't compare against same wine twice
+        );
+        
+        if (sameSentimentWines.length > 0) {
+          currentComparison.opponent = sameSentimentWines[Math.floor(Math.random() * sameSentimentWines.length)];
+          displayComparison();
+          return;
+        }
+      }
+      
+      // Finished ranking
+      finishRanking();
+    }
+
+    function getMaxScore(sentiment) {
+      return sentiment === 'yes' ? 10.0 : sentiment === 'ok' ? 7.0 : 4.0;
+    }
+
+    function getMinScore(sentiment) {
+      return sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.0 : 1.0;
+    }
+
+    function finishRanking() {
+      const wine = wines.find(w => w.id === currentWineId);
+      if (wine.score !== null) {
+        alert(`Ranked! Your wine scored ${wine.score.toFixed(1)}/10`);
+      }
+      showCollection();
     }
 
     // Initialize
