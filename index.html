@@ -737,29 +737,48 @@
     function startComparisonRanking(s) {
       const w = wines.find(x => x.id === currentWineId);
       const same = wines.filter(x => x.sentiment === s && x.id !== currentWineId && x.score !== null);
+      
       if (same.length === 0) {
-        w.score = s === 'yes' ? 9.0 : s === 'ok' ? 5.5 : 2.0;
+        // First wine with this sentiment - give it middle score
+        w.score = s === 'yes' ? 8.5 : s === 'ok' ? 5.5 : 2.5;
         w.comparisons = 0;
         recalculateAllScores();
         localStorage.setItem('wines', JSON.stringify(wines));
         showCollection();
         return;
       }
-      currentComparison = {newWine: w, sentiment: s, comparisonResults: [], totalComparisons: 0};
-      compareNextWine();
+      
+      // Sort existing wines by score (high to low)
+      const sorted = same.sort((a, b) => b.score - a.score);
+      
+      // Binary search comparison setup
+      currentComparison = {
+        newWine: w,
+        sentiment: s,
+        sortedWines: sorted,
+        low: 0,
+        high: sorted.length - 1,
+        comparisonCount: 0
+      };
+      
+      compareNextBinary();
     }
 
-    function compareNextWine() {
-      const {newWine, sentiment, comparisonResults, totalComparisons} = currentComparison;
-      const same = wines.filter(w => w.sentiment === sentiment && w.id !== newWine.id && w.score !== null);
-      if (totalComparisons >= Math.min(5, same.length)) {
-        calculateFinalScore();
+    function compareNextBinary() {
+      const {newWine, sortedWines, low, high} = currentComparison;
+      
+      if (low > high) {
+        // Done comparing - new wine should be inserted at position 'low'
+        finalizeBinaryRanking();
         return;
       }
-      const compared = comparisonResults.map(r => r.opponentId);
-      const uncompared = same.filter(w => !compared.includes(w.id));
-      const opp = uncompared.length > 0 ? uncompared[0] : same[Math.floor(Math.random() * same.length)];
-      currentComparison.opponent = opp;
+      
+      // Compare against middle wine
+      const mid = Math.floor((low + high) / 2);
+      currentComparison.currentMid = mid;
+      currentComparison.opponent = sortedWines[mid];
+      currentComparison.comparisonCount++;
+      
       displayComparison();
     }
 
@@ -781,37 +800,74 @@
     }
 
     function selectWinner(winner) {
-      const {newWine, opponent, comparisonResults} = currentComparison;
-      comparisonResults.push({opponentId: opponent.id, opponentScore: opponent.score, newWineWon: winner === 'new'});
-      currentComparison.totalComparisons++;
-      compareNextWine();
+      const {sortedWines, currentMid, low, high} = currentComparison;
+      
+      if (winner === 'new') {
+        // New wine is better - search higher half
+        currentComparison.high = currentMid - 1;
+      } else {
+        // Opponent is better - search lower half
+        currentComparison.low = currentMid + 1;
+      }
+      
+      compareNextBinary();
     }
 
-    function calculateFinalScore() {
-      const {newWine, sentiment, comparisonResults} = currentComparison;
-      const wins = comparisonResults.filter(r => r.newWineWon).length;
-      const total = comparisonResults.length;
-      const winRate = wins / total;
-      const avgOpp = comparisonResults.reduce((sum, r) => sum + r.opponentScore, 0) / total;
-      const adj = (winRate - 0.5) * 0.8;
-      newWine.score = Math.max(getMinScore(sentiment), Math.min(getMaxScore(sentiment), avgOpp + adj));
-      newWine.comparisons = total;
+    function finalizeBinaryRanking() {
+      const {newWine, sentiment, sortedWines, low, comparisonCount} = currentComparison;
+      
+      // 'low' is the insertion position
+      // Calculate score based on position
+      const maxScore = getMaxScore(sentiment);
+      const minScore = getMinScore(sentiment);
+      
+      let score;
+      if (sortedWines.length === 0) {
+        score = (maxScore + minScore) / 2;
+      } else if (low === 0) {
+        // Better than all existing wines
+        score = maxScore;
+      } else if (low >= sortedWines.length) {
+        // Worse than all existing wines
+        score = minScore;
+      } else {
+        // Between two wines - take average
+        const above = sortedWines[low - 1].score;
+        const below = sortedWines[low].score;
+        score = (above + below) / 2;
+        
+        // Add small offset to prevent exact ties
+        score = score + (Math.random() * 0.01 - 0.005);
+      }
+      
+      newWine.score = Math.max(minScore, Math.min(maxScore, score));
+      newWine.comparisons = comparisonCount;
+      
+      // Recalculate all scores to spread them evenly
       recalculateAllScores();
+      
       localStorage.setItem('wines', JSON.stringify(wines));
       finishRanking();
     }
 
     function recalculateAllScores() {
+      // Recalculate scores for each sentiment category
       ['yes', 'ok', 'no'].forEach(s => {
         const sw = wines.filter(w => w.sentiment === s && w.score !== null).sort((a, b) => b.score - a.score);
         if (sw.length === 0) return;
+        
         const max = getMaxScore(s);
         const min = getMinScore(s);
-        const range = max - min;
-        sw.forEach((w, i) => {
-          const rel = i / Math.max(1, sw.length - 1);
-          w.score = max - (rel * range);
-        });
+        
+        if (sw.length === 1) {
+          sw[0].score = max;
+        } else {
+          // Spread wines evenly across the range
+          const step = (max - min) / (sw.length - 1);
+          sw.forEach((w, i) => {
+            w.score = max - (i * step);
+          });
+        }
       });
     }
 
