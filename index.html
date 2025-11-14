@@ -262,13 +262,16 @@
       <div class="card text-center">
         <div class="wine-icon">🍷</div>
         <h2>Discover & Track Wines</h2>
-        <p class="subtitle">Build your collection or learn about new wines</p>
+        <p class="subtitle">Build your collection or discover new wines</p>
         <div class="option-buttons">
           <button class="btn btn-primary" onclick="showAddOptions()">
             <span>➕</span><span>Add Wine to Collection</span>
           </button>
           <button class="btn btn-secondary" onclick="showLearnOptions()">
             <span>🔍</span><span>Learn About a Wine</span>
+          </button>
+          <button class="btn btn-secondary" onclick="showDineOptions()">
+            <span>🍽️</span><span>Dine - Scan Menu</span>
           </button>
         </div>
         <div style="height: 24px"></div>
@@ -482,6 +485,32 @@
       </div>
     </div>
 
+    <div id="dineOptionsView" class="content hidden">
+      <div class="card text-center">
+        <h2>Scan Restaurant Menu</h2>
+        <p class="subtitle">Get details on all wines from a menu</p>
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="startCamera('menu')">
+            <span>📸</span><span>Scan Wine Menu</span>
+          </button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="goHome()">Back</button>
+      </div>
+    </div>
+
+    <div id="menuResultView" class="content hidden">
+      <div class="card">
+        <h2>Wines on Menu</h2>
+        <p class="subtitle">Tap a wine to see tasting notes</p>
+        <div id="menuWineList" class="wine-list"></div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="showDineOptions()">Scan Another Menu</button>
+        <div style="height: 8px"></div>
+        <button class="btn btn-secondary" onclick="goHome()">Back to Home</button>
+      </div>
+    </div>
+
     <div id="wishlistView" class="content hidden">
       <h2 style="margin-bottom: 16px; color: #1f2937;">Saved Wines</h2>
       <p class="subtitle" style="margin-bottom: 16px;">Wines you want to try or buy later</p>
@@ -510,6 +539,7 @@
     let currentImageData = null;
     let currentMode = 'add';
     let learnedWineData = null;
+    let menuWines = [];
 
     function isValidImage(img) {
       return img && typeof img === 'string' && img.startsWith('data:image/') && img.length > 100;
@@ -519,7 +549,7 @@
     localStorage.setItem('wines', JSON.stringify(wines));
 
     function showView(v) {
-      ['homeView','addOptionsView','learnOptionsView','cameraView','processingView','resultView','searchView','learnResultView','collectionView','detailView','wishlistView','wishlistDetailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['homeView','addOptionsView','learnOptionsView','dineOptionsView','cameraView','processingView','resultView','searchView','learnResultView','menuResultView','collectionView','detailView','wishlistView','wishlistDetailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
       document.querySelector('.close-btn').classList.toggle('hidden', v === 'homeView');
       document.getElementById('fab').classList.toggle('hidden', v === 'homeView' || v === 'cameraView');
@@ -528,17 +558,22 @@
     function goHome() {
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
       currentImageData = null;
+      menuWines = [];
       showView('homeView');
     }
 
     function showAddOptions() { showView('addOptionsView'); }
     function showLearnOptions() { showView('learnOptionsView'); }
+    function showDineOptions() { showView('dineOptionsView'); }
 
     async function startCamera(mode) {
       currentMode = mode || 'add';
       if (mode === 'learn') {
         document.getElementById('cameraTitle').textContent = 'Scan Wine Label';
         document.getElementById('cameraSubtitle').textContent = 'AI will identify the wine and provide details';
+      } else if (mode === 'menu') {
+        document.getElementById('cameraTitle').textContent = 'Scan Wine Menu';
+        document.getElementById('cameraSubtitle').textContent = 'AI will extract all wines from the menu';
       } else {
         document.getElementById('cameraTitle').textContent = 'Take Photo';
         document.getElementById('cameraSubtitle').textContent = 'Center the label in the frame';
@@ -570,6 +605,8 @@
       
       if (currentMode === 'learn') {
         extractWineNameAndLearn(currentImageData);
+      } else if (currentMode === 'menu') {
+        extractMenuWines(currentImageData);
       } else {
         processImage(currentImageData);
       }
@@ -874,8 +911,14 @@
         </div>` : ''}
 
         ${w.price ? `<div class="form-group">
-          <label>Typical Price</label>
+          <label>Typical Retail Price</label>
           <div style="color: #6b7280">${w.price}</div>
+        </div>` : ''}
+
+        ${w.menuPrice ? `<div class="form-group">
+          <label>Menu Price</label>
+          <div style="color: #9333ea; font-weight: 600; font-size: 18px;">${w.menuPrice}</div>
+          ${w.price ? `<div class="help-text">Compare to typical retail: ${w.price}</div>` : ''}
         </div>` : ''}
       `;
 
@@ -1148,6 +1191,172 @@
         localStorage.setItem('wishlist', JSON.stringify(wishlist));
         updateCollectionCount();
         showWishlist();
+      }
+    }
+
+    async function extractMenuWines(imageData) {
+      showView('processingView');
+      document.getElementById('processingStatus').textContent = 'Reading menu...';
+      
+      try {
+        const apiKey = localStorage.getItem('openai_key');
+        if (!apiKey) {
+          alert('Please add your OpenAI API key in Settings to use AI menu scanning.');
+          showSettings();
+          return;
+        }
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: imageData } },
+                { 
+                  type: "text", 
+                  text: `Extract ALL wines from this restaurant wine menu/list. Return ONLY a JSON array:
+
+[
+  {
+    "name": "wine name",
+    "vintage": "year",
+    "producer": "producer if shown",
+    "price": "price including $ sign",
+    "glassPrice": "by-glass price if shown",
+    "bottlePrice": "bottle price if shown"
+  }
+]
+
+Extract every wine you can see. If vintage/producer not shown, use empty string. Be thorough.`
+                }
+              ]
+            }],
+            max_tokens: 2000
+          })
+        });
+
+        if (!response.ok) throw new Error('API request failed');
+
+        const data = await response.json();
+        let text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        menuWines = JSON.parse(text);
+        
+        if (!menuWines || menuWines.length === 0) {
+          alert('No wines found on this menu. Please try again with a clearer photo.');
+          showDineOptions();
+          return;
+        }
+        
+        displayMenuWines();
+        
+      } catch (err) {
+        console.error('Menu extract error:', err);
+        alert('Could not read menu. Please ensure the photo is clear and try again.');
+        showDineOptions();
+      }
+    }
+
+    function displayMenuWines() {
+      const list = document.getElementById('menuWineList');
+      
+      list.innerHTML = menuWines.map((w, index) => {
+        const displayPrice = w.price || w.bottlePrice || w.glassPrice || 'Price not listed';
+        
+        return `
+          <div class="wine-item" onclick="learnAboutMenuWine(${index})">
+            <div class="wine-emoji">🍽️</div>
+            <div class="wine-info">
+              <div class="wine-name">${w.name}</div>
+              <div class="wine-meta">
+                ${w.vintage ? w.vintage : 'Vintage N/A'}
+                ${w.producer ? ' • ' + w.producer : ''}
+              </div>
+              <div class="wine-meta" style="color: #9333ea; font-weight: 600; margin-top: 4px;">
+                ${displayPrice}
+                ${w.glassPrice && w.bottlePrice ? ' (Glass: ' + w.glassPrice + ' / Bottle: ' + w.bottlePrice + ')' : ''}
+              </div>
+            </div>
+          </div>
+        `}).join('');
+      
+      showView('menuResultView');
+    }
+
+    async function learnAboutMenuWine(index) {
+      const w = menuWines[index];
+      const wineName = `${w.name} ${w.vintage}`.trim();
+      
+      // Store the menu price for reference
+      const menuPrice = w.price || w.bottlePrice || w.glassPrice || null;
+      
+      await searchForWineDetails(wineName, null, menuPrice);
+    }
+
+    async function searchForWineDetails(wineName, imageData, menuPrice) {
+      if (!menuPrice) {
+        document.getElementById('processingStatus').textContent = 'Searching for wine details...';
+      } else {
+        showView('processingView');
+        document.getElementById('processingStatus').textContent = 'Getting wine details...';
+      }
+      
+      try {
+        const apiKey = localStorage.getItem('openai_key');
+        
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{
+              role: "user",
+              content: `Provide detailed information about the wine: "${wineName}". Return ONLY JSON:
+
+{
+  "name": "full wine name",
+  "vintage": "year",
+  "producer": "winery",
+  "region": "region, country",
+  "varietal": "grapes",
+  "type": "Red/White/Rosé/Sparkling/Dessert",
+  "tastingNotes": "detailed tasting profile with flavors, aromas, body, tannins, acidity",
+  "foodPairings": "specific dishes",
+  "price": "typical retail price range",
+  "description": "2-3 sentence overview"
+}`
+            }],
+            max_tokens: 1500
+          })
+        });
+
+        if (!response.ok) throw new Error('API request failed');
+
+        const data = await response.json();
+        let text = data.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        learnedWineData = JSON.parse(text);
+        learnedWineData.image = imageData;
+        learnedWineData.menuPrice = menuPrice; // Store menu price if from menu scan
+        displayLearnedWine();
+
+      } catch (err) {
+        console.error('Search error:', err);
+        alert('Could not find detailed information about this wine.');
+        if (menuWines.length > 0) {
+          displayMenuWines();
+        } else {
+          showLearnOptions();
+        }
       }
     }
 
