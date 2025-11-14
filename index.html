@@ -275,6 +275,10 @@
         <button class="btn btn-secondary" onclick="showCollection()">
           <span>🍷</span><span id="collectionCount">My Collection (0)</span>
         </button>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="showWishlist()">
+          <span>⭐</span><span id="wishlistCount">Saved Wines (0)</span>
+        </button>
       </div>
     </div>
 
@@ -401,11 +405,15 @@
         <h2 id="learnWineName">Wine Name</h2>
         <div id="learnWineInfo"></div>
         <div class="btn-group">
-          <button class="btn btn-primary" onclick="addLearnedWineToCollection()">
-            <span>➕</span><span>Add to My Collection</span>
+          <button class="btn btn-primary" onclick="saveToWishlist()">
+            <span>⭐</span><span>Save for Later</span>
           </button>
-          <button class="btn btn-secondary" onclick="showLearnOptions()">Search Another</button>
+          <button class="btn btn-secondary" onclick="addLearnedWineToCollection()">
+            <span>➕</span><span>Add to Collection</span>
+          </button>
         </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="showLearnOptions()">Search Another</button>
         <div style="height: 12px"></div>
         <button class="btn btn-secondary" onclick="goHome()">Back to Home</button>
       </div>
@@ -474,11 +482,27 @@
       </div>
     </div>
 
+    <div id="wishlistView" class="content hidden">
+      <h2 style="margin-bottom: 16px; color: #1f2937;">Saved Wines</h2>
+      <p class="subtitle" style="margin-bottom: 16px;">Wines you want to try or buy later</p>
+      <div id="wishlistList" class="wine-list"></div>
+      <div id="wishlistEmptyState" class="card text-center hidden">
+        <div class="wine-icon">⭐</div>
+        <h2>No saved wines yet</h2>
+        <p class="subtitle">Use "Learn About a Wine" to discover and save wines for later!</p>
+      </div>
+    </div>
+
+    <div id="wishlistDetailView" class="content hidden">
+      <div class="card" id="wishlistDetailCard"></div>
+    </div>
+
     <button class="fab hidden" id="fab" onclick="showAddOptions()">➕</button>
   </div>
 
   <script>
     let wines = JSON.parse(localStorage.getItem('wines') || '[]');
+    let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
     let currentWineId = null;
     let stream = null;
     let facingMode = 'environment';
@@ -495,7 +519,7 @@
     localStorage.setItem('wines', JSON.stringify(wines));
 
     function showView(v) {
-      ['homeView','addOptionsView','learnOptionsView','cameraView','processingView','resultView','searchView','learnResultView','collectionView','detailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['homeView','addOptionsView','learnOptionsView','cameraView','processingView','resultView','searchView','learnResultView','collectionView','detailView','wishlistView','wishlistDetailView','settingsView','sentimentView','comparisonView'].forEach(id => document.getElementById(id).classList.add('hidden'));
       document.getElementById(v).classList.remove('hidden');
       document.querySelector('.close-btn').classList.toggle('hidden', v === 'homeView');
       document.getElementById('fab').classList.toggle('hidden', v === 'homeView' || v === 'cameraView');
@@ -957,6 +981,174 @@
 
     function updateCollectionCount() {
       document.getElementById('collectionCount').textContent = `My Collection (${wines.length})`;
+      document.getElementById('wishlistCount').textContent = `Saved Wines (${wishlist.length})`;
+    }
+
+    function saveToWishlist() {
+      if (!learnedWineData) return;
+      
+      // Check if already in wishlist
+      const existing = wishlist.find(w => 
+        w.name.toLowerCase() === learnedWineData.name.toLowerCase() && 
+        w.vintage === learnedWineData.vintage
+      );
+      
+      if (existing) {
+        alert('This wine is already in your saved wines!');
+        return;
+      }
+      
+      const savedWine = {
+        id: Date.now(),
+        ...learnedWineData,
+        savedDate: new Date().toISOString().split('T')[0]
+      };
+      
+      wishlist.unshift(savedWine);
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      updateCollectionCount();
+      alert('Wine saved! View it in "Saved Wines" from the home screen.');
+    }
+
+    function showWishlist() {
+      const list = document.getElementById('wishlistList');
+      const empty = document.getElementById('wishlistEmptyState');
+      
+      if (wishlist.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+      } else {
+        empty.classList.add('hidden');
+        list.innerHTML = wishlist.map(w => {
+          const typeColors = {
+            'Red': '#dc2626',
+            'White': '#fbbf24',
+            'Rosé': '#ec4899',
+            'Sparkling': '#8b5cf6',
+            'Dessert': '#f59e0b'
+          };
+          const typeColor = typeColors[w.type] || '#6b7280';
+          
+          return `
+          <div class="wine-item" onclick="showWishlistDetail(${w.id})">
+            ${isValidImage(w.image) ? `<img src="${w.image}" class="wine-item-image">` : `<div class="wine-emoji">⭐</div>`}
+            <div class="wine-info">
+              <div class="wine-name">${w.name}</div>
+              <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
+              <div class="rank-section">
+                <span class="type-badge" style="background: ${typeColor}; padding: 2px 8px; font-size: 12px;">${w.type || 'Wine'}</span>
+              </div>
+            </div>
+          </div>
+        `}).join('');
+      }
+      
+      showView('wishlistView');
+    }
+
+    function showWishlistDetail(id) {
+      const w = wishlist.find(x => x.id === id);
+      if (!w) return;
+      
+      const typeColors = {
+        'Red': '#dc2626',
+        'White': '#fbbf24',
+        'Rosé': '#ec4899',
+        'Sparkling': '#8b5cf6',
+        'Dessert': '#f59e0b'
+      };
+      const typeColor = typeColors[w.type] || '#6b7280';
+      
+      document.getElementById('wishlistDetailCard').innerHTML = `
+        ${isValidImage(w.image) ? `<img src="${w.image}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
+        <h2>${w.name}</h2>
+        <p class="subtitle">${w.vintage || 'Vintage not specified'}</p>
+        
+        ${w.type ? `<div style="margin-bottom: 16px;">
+          <span class="type-badge" style="background: ${typeColor};">${w.type} Wine</span>
+        </div>` : ''}
+
+        ${w.description ? `<div class="form-group">
+          <label>About This Wine</label>
+          <div style="color: #374151; line-height: 1.6;">${w.description}</div>
+        </div>` : ''}
+
+        ${w.producer ? `<div class="form-group">
+          <label>Producer</label>
+          <div style="color: #6b7280">${w.producer}</div>
+        </div>` : ''}
+
+        ${w.region ? `<div class="form-group">
+          <label>Region</label>
+          <div style="color: #6b7280">${w.region}</div>
+        </div>` : ''}
+
+        ${w.varietal ? `<div class="form-group">
+          <label>Varietal / Blend</label>
+          <div style="color: #6b7280">${w.varietal}</div>
+        </div>` : ''}
+
+        ${w.tastingNotes ? `<div class="form-group">
+          <label>Tasting Notes</label>
+          <div style="color: #374151; line-height: 1.6; background: #f9fafb; padding: 12px; border-radius: 8px;">
+            ${w.tastingNotes}
+          </div>
+        </div>` : ''}
+
+        ${w.foodPairings ? `<div class="form-group">
+          <label>Food Pairings</label>
+          <div style="color: #374151; line-height: 1.6;">
+            ${w.foodPairings}
+          </div>
+        </div>` : ''}
+
+        ${w.price ? `<div class="form-group">
+          <label>Typical Price</label>
+          <div style="color: #6b7280">${w.price}</div>
+        </div>` : ''}
+
+        <div class="form-group">
+          <label>Saved Date</label>
+          <div style="color: #6b7280">${w.savedDate}</div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addWishlistToCollection(${id})">
+            <span>➕</span><span>Add to Collection</span>
+          </button>
+          <button class="btn btn-danger" onclick="deleteFromWishlist(${id})">
+            🗑️ Remove
+          </button>
+        </div>
+      `;
+      
+      showView('wishlistDetailView');
+    }
+
+    function addWishlistToCollection(id) {
+      const w = wishlist.find(x => x.id === id);
+      if (!w) return;
+      
+      const c = document.getElementById('imageContainer');
+      c.innerHTML = w.image ? `<img src="${w.image}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      
+      document.getElementById('wineName').value = w.name || '';
+      document.getElementById('wineVintage').value = w.vintage || '';
+      document.getElementById('wineProducer').value = w.producer || '';
+      document.getElementById('wineRegion').value = w.region || '';
+      document.getElementById('wineVarietal').value = w.varietal || '';
+      
+      currentImageData = w.image;
+      showView('resultView');
+    }
+
+    function deleteFromWishlist(id) {
+      if (confirm('Remove this wine from saved wines?')) {
+        wishlist = wishlist.filter(w => w.id !== id);
+        localStorage.setItem('wishlist', JSON.stringify(wishlist));
+        updateCollectionCount();
+        showWishlist();
+      }
     }
 
     function showSettings() {
