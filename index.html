@@ -876,14 +876,22 @@
         email,
         password,
         options: {
-          data: { username, display_name: displayName || username }
+          data: { username, display_name: displayName || username },
+          emailRedirectTo: 'https://kinghans.github.io/wine-scanner/'
         }
       });
       
       if (error) {
         alert('Signup failed: ' + error.message);
       } else {
-        alert('Account created! Please check your email to verify.');
+        alert('Account created! You can now sign in.');
+        // Auto-switch to login tab
+        document.getElementById('signupForm').classList.add('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.querySelectorAll('.tab-button')[0].classList.add('active');
+        document.querySelectorAll('.tab-button')[1].classList.remove('active');
+        // Pre-fill email
+        document.getElementById('loginEmail').value = email;
       }
     }
 
