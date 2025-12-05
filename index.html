@@ -559,10 +559,7 @@
     <div class="header">
       <div class="header-content">
         <h1><span>🍇</span><span>Grapevine</span></h1>
-        <div style="display: flex; gap: 8px;">
-          <button class="settings-btn" onclick="showSettings()">⚙️</button>
-          <button class="logout-btn" onclick="handleLogout()">🚪</button>
-        </div>
+        <button class="logout-btn" onclick="handleLogout()">🚪</button>
       </div>
     </div>
 
@@ -581,6 +578,8 @@
         <div class="profile-avatar" id="profileAvatar">JD</div>
         <div class="profile-name" id="profileDisplayName">Loading...</div>
         <div class="profile-username" id="profileUsername">@loading</div>
+        <div id="profileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
+        <button onclick="editProfile()" style="margin-top: 12px; padding: 6px 16px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; color: #8B3A42; font-size: 14px; font-weight: 500; cursor: pointer;">Edit Profile</button>
         <div class="profile-stats">
           <div class="stat-item">
             <div class="stat-number" id="profileWineCount">0</div>
@@ -621,21 +620,24 @@
       </div>
     </div>
 
-    <div id="cameraView" class="content hidden">
-      <div class="card">
-        <h2 id="cameraTitle">Scan Wine Label</h2>
-        <p class="subtitle" id="cameraSubtitle">Center the label in the frame</p>
-        <div class="camera-container">
-          <video id="video" autoplay playsinline></video>
+    <div id="cameraView" class="content hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; padding: 0; z-index: 3000; background: #000;">
+      <div style="height: 100%; display: flex; flex-direction: column;">
+        <div style="padding: 20px; background: rgba(0,0,0,0.7); color: white;">
+          <h2 id="cameraTitle" style="color: white; margin-bottom: 4px;">Scan Wine Label</h2>
+          <p id="cameraSubtitle" style="color: rgba(255,255,255,0.8); margin-bottom: 0; font-size: 14px;">Center the label in the frame</p>
+        </div>
+        <div style="flex: 1; position: relative;">
+          <video id="video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
           <div class="camera-overlay"></div>
-          <div class="camera-hint">Position label vertically in frame</div>
+          <div class="camera-hint" id="cameraHint">Position label vertically in frame</div>
           <div class="camera-controls">
             <button class="flip-camera-btn" onclick="flipCamera()">🔄</button>
             <button class="capture-btn" onclick="capturePhoto()"></button>
           </div>
         </div>
-        <div style="height: 12px"></div>
-        <button class="btn btn-secondary" onclick="closeCamera()">Cancel</button>
+        <div style="padding: 20px; background: rgba(0,0,0,0.7);">
+          <button class="btn btn-secondary" onclick="closeCamera()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">Cancel</button>
+        </div>
       </div>
     </div>
 
@@ -800,6 +802,9 @@
         <button class="btn btn-secondary" onclick="startCamera('menu')">
           <span>🍽️</span><span>Scan Restaurant Menu</span>
         </button>
+        <button class="btn btn-secondary" onclick="startManualEntry()">
+          <span>✍️</span><span>Enter Manually</span>
+        </button>
       </div>
     </div>
   </div>
@@ -823,6 +828,7 @@
     let currentWineId = null;
     let currentComparison = null;
     let currentWineCacheId = null;
+    let autoCaptureTimer = null;
 
     // AUTH FUNCTIONS
     function showAuthTab(tab) {
@@ -934,6 +940,9 @@
       document.getElementById('profileAvatar').textContent = currentProfile.username?.substring(0, 2).toUpperCase() || 'WL';
       document.getElementById('profileDisplayName').textContent = currentProfile.display_name || currentProfile.username;
       document.getElementById('profileUsername').textContent = '@' + currentProfile.username;
+      document.getElementById('profileBio').textContent = currentProfile.bio || 'Add a bio...';
+      document.getElementById('profileBio').style.color = currentProfile.bio ? '#666' : '#999';
+      document.getElementById('profileBio').style.fontStyle = currentProfile.bio ? 'normal' : 'italic';
       
       const { data: stats } = await supabase.rpc('get_user_stats', { user_uuid: currentUser.id });
       if (stats && stats.length > 0) {
@@ -943,6 +952,16 @@
       }
       
       await loadFeed();
+    }
+
+    function editProfile() {
+      if (!currentProfile) return;
+      
+      document.getElementById('settingsDisplayName').value = currentProfile.display_name || '';
+      document.getElementById('settingsBio').value = currentProfile.bio || '';
+      
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('settingsView').classList.remove('hidden');
     }
 
     async function loadFeed() {
@@ -1246,7 +1265,7 @@
         } else {
           empty.classList.add('hidden');
           list.innerHTML = wishlist.map(w => `
-            <div class="wine-item">
+            <div class="wine-item" onclick="showWishlistDetail('${w.id}')">
               ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">⭐</div>'}
               <div class="wine-info">
                 <div class="wine-name">${w.name}</div>
@@ -1272,6 +1291,18 @@
       if (e.target.classList.contains('modal-overlay')) closeAddModal();
     }
 
+    function startManualEntry() {
+      closeAddModal();
+      currentImageData = null;
+      document.getElementById('imageContainer').innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      document.getElementById('wineName').value = '';
+      document.getElementById('wineVintage').value = '';
+      document.getElementById('wineProducer').value = '';
+      document.getElementById('wineRegion').value = '';
+      document.getElementById('wineVarietal').value = '';
+      document.getElementById('resultView').classList.remove('hidden');
+    }
+
     async function startCamera(mode) {
       currentMode = mode || 'add';
       closeAddModal();
@@ -1290,18 +1321,43 @@
         if (stream) stream.getTracks().forEach(t => t.stop());
         stream = await navigator.mediaDevices.getUserMedia({video: {facingMode}, audio: false});
         document.getElementById('video').srcObject = stream;
+        
+        // Start auto-capture countdown after 2 seconds
+        if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
+        autoCaptureTimer = setTimeout(() => {
+          startCountdown();
+        }, 2000);
       } catch (err) {
         alert('Camera access denied');
         closeAddModal();
       }
     }
 
+    function startCountdown() {
+      let count = 3;
+      const hint = document.getElementById('cameraHint');
+      
+      const countInterval = setInterval(() => {
+        if (count > 0) {
+          hint.textContent = `Capturing in ${count}...`;
+          hint.style.fontSize = '24px';
+          hint.style.fontWeight = 'bold';
+          count--;
+        } else {
+          clearInterval(countInterval);
+          capturePhoto();
+        }
+      }, 1000);
+    }
+
     function closeCamera() {
       if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      if (autoCaptureTimer) { clearTimeout(autoCaptureTimer); autoCaptureTimer = null; }
       showTab(currentTab);
     }
 
     async function flipCamera() {
+      if (autoCaptureTimer) { clearTimeout(autoCaptureTimer); autoCaptureTimer = null; }
       facingMode = facingMode === 'environment' ? 'user' : 'environment';
       await startCamera(currentMode);
     }
@@ -1746,6 +1802,97 @@
       `;
     }
 
+    async function showWishlistDetail(id) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.remove('hidden');
+      
+      document.getElementById('wishlistDetailCard').innerHTML = `
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="type-badge" style="background: #8B3A42;">${wine.wine_type} Wine</span></div>` : ''}
+        ${wine.description ? `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${wine.description}</div></div>` : ''}
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        ${wine.tasting_notes ? `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${wine.tasting_notes}</div></div>` : ''}
+        ${wine.food_pairings ? `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${wine.food_pairings}</div></div>` : ''}
+        ${wine.price ? `<div class="form-group"><label>Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addWishlistWineToCollection('${id}')">
+            <span>➕</span><span>Add to Collection</span>
+          </button>
+          <button class="btn btn-danger" onclick="deleteWishlistWine('${id}')">🗑️ Remove</button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="backToProfile()">Back</button>
+      `;
+    }
+
+    async function addWishlistWineToCollection(wishlistId) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*')
+        .eq('id', wishlistId)
+        .single();
+      
+      if (!wine) return;
+      
+      const { data, error } = await supabase
+        .from('wines')
+        .insert({
+          user_id: currentUser.id,
+          wine_cache_id: wine.wine_cache_id,
+          name: wine.name,
+          vintage: wine.vintage,
+          producer: wine.producer,
+          region: wine.region,
+          varietal: wine.varietal,
+          image_url: wine.image_url
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        alert('Error adding wine: ' + error.message);
+        return;
+      }
+      
+      currentWineId = data.id;
+      
+      await supabase.from('activities').insert({
+        user_id: currentUser.id,
+        wine_id: data.id,
+        activity_type: 'added',
+        wine_name: wine.name,
+        wine_vintage: wine.vintage
+      });
+      
+      // Delete from wishlist
+      await supabase.from('wishlist').delete().eq('id', wishlistId);
+      
+      alert('Wine added to collection!');
+      document.getElementById('wishlistDetailView').classList.add('hidden');
+      showSentimentPrompt();
+    }
+
+    async function deleteWishlistWine(id) {
+      if (confirm('Remove from saved wines?')) {
+        await supabase.from('wishlist').delete().eq('id', id);
+        document.getElementById('wishlistDetailView').classList.add('hidden');
+        showTab('profile');
+        showProfileTab('saved');
+      }
+    }
+
     function backToProfile() {
       document.getElementById('detailView').classList.add('hidden');
       showTab('profile');
@@ -1775,7 +1922,7 @@
 
     function closeSettings() {
       document.getElementById('settingsView').classList.add('hidden');
-      showTab(currentTab);
+      document.getElementById('profileView').classList.remove('hidden');
     }
 
     async function saveProfileSettings() {
