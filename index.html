@@ -564,12 +564,68 @@
     </div>
 
     <div id="feedView" class="content">
-      <h2 style="margin-bottom: 16px;">Feed</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">Feed</h2>
+        <button onclick="showDiscoverUsers()" style="padding: 8px 16px; background: #8B3A42; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+          👥 Discover
+        </button>
+      </div>
       <div id="feedContent"></div>
       <div id="feedEmpty" class="card text-center">
-        <div class="wine-icon">🌐</div>
-        <h2>No Activity Yet</h2>
-        <p class="subtitle">Follow friends to see their wine discoveries</p>
+        <div class="wine-icon">🍇</div>
+        <h2>Welcome to Grapevine!</h2>
+        <p class="subtitle">Start adding wines to see activity here</p>
+      </div>
+    </div>
+
+    <div id="discoverView" class="content hidden">
+      <h2 style="margin-bottom: 16px;">Discover Users</h2>
+      <div class="form-group">
+        <input type="text" id="userSearchInput" placeholder="Search by username..." oninput="searchUsers()" style="margin-bottom: 16px;">
+      </div>
+      <div id="discoverUsersList"></div>
+      <div style="height: 12px"></div>
+      <button class="btn btn-secondary" onclick="closeDiscoverUsers()">Back to Feed</button>
+    </div>
+
+    <div id="userProfileView" class="content hidden">
+      <div class="profile-header">
+        <div class="profile-avatar" id="viewProfileAvatar">JD</div>
+        <div class="profile-name" id="viewProfileDisplayName">Loading...</div>
+        <div class="profile-username" id="viewProfileUsername">@loading</div>
+        <div id="viewProfileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
+        <div id="followButtonContainer" style="margin-top: 12px;"></div>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <div class="stat-number" id="viewProfileWineCount">0</div>
+            <div class="stat-label">Wines</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="viewProfileFollowersCount">0</div>
+            <div class="stat-label">Followers</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="viewProfileFollowingCount">0</div>
+            <div class="stat-label">Following</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-tabs">
+        <button class="profile-tab active" onclick="showViewProfileTab('collection')">Collection</button>
+      </div>
+
+      <div id="viewProfileCollectionTab" style="padding: 20px;">
+        <div id="viewProfileWineList" class="wine-list"></div>
+        <div id="viewProfileEmptyState" class="card text-center hidden">
+          <div class="wine-icon">🍷</div>
+          <h2>No wines yet</h2>
+          <p class="subtitle">This user hasn't added any wines</p>
+        </div>
+      </div>
+      
+      <div style="padding: 20px;">
+        <button class="btn btn-secondary" onclick="closeUserProfile()">Back</button>
       </div>
     </div>
 
@@ -817,6 +873,7 @@
     
     let currentUser = null;
     let currentProfile = null;
+    let currentViewedProfile = null;
     let stream = null;
     let facingMode = 'environment';
     let currentImageData = null;
@@ -965,10 +1022,37 @@
     }
 
     async function loadFeed() {
-      const { data: activities } = await supabase.rpc('get_feed', { 
-        user_uuid: currentUser.id,
-        limit_count: 20
-      });
+      // Load feed from followed users, or all activities if not following anyone
+      const { data: followingCount } = await supabase
+        .from('follows')
+        .select('following_id', { count: 'exact', head: true })
+        .eq('follower_id', currentUser.id);
+      
+      let activities;
+      
+      if (followingCount && followingCount > 0) {
+        // Show activities from followed users
+        const { data } = await supabase.rpc('get_feed', { 
+          user_uuid: currentUser.id,
+          limit_count: 50
+        });
+        activities = data;
+      } else {
+        // Show all activities if not following anyone
+        const { data } = await supabase
+          .from('activities')
+          .select(`
+            *,
+            profiles!activities_user_id_fkey (
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        activities = data;
+      }
       
       const feedContent = document.getElementById('feedContent');
       const feedEmpty = document.getElementById('feedEmpty');
@@ -982,15 +1066,16 @@
       feedEmpty.classList.add('hidden');
       
       feedContent.innerHTML = activities.map(act => {
+        const profile = act.profiles || act;
         const timeAgo = getTimeAgo(new Date(act.created_at));
         const sentimentEmoji = act.sentiment === 'yes' ? '😍' : act.sentiment === 'ok' ? '😊' : act.sentiment === 'no' ? '😐' : '';
         
         return `
-          <div class="feed-post">
+          <div class="feed-post" style="cursor: pointer;" onclick="viewUserProfile('${act.user_id}')">
             <div class="post-header">
-              <div class="post-avatar">${act.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="post-avatar">${(profile.username || act.username)?.substring(0, 2).toUpperCase() || 'U'}</div>
               <div class="post-user-info">
-                <div class="post-username">${act.display_name || act.username}</div>
+                <div class="post-username">${profile.display_name || act.display_name || profile.username || act.username || 'User'}</div>
                 <div class="post-time">${timeAgo}</div>
               </div>
             </div>
@@ -1005,6 +1090,281 @@
           </div>
         `;
       }).join('');
+    }
+
+    // DISCOVER USERS
+    function showDiscoverUsers() {
+      document.getElementById('feedView').classList.add('hidden');
+      document.getElementById('discoverView').classList.remove('hidden');
+      loadAllUsers();
+    }
+
+    function closeDiscoverUsers() {
+      document.getElementById('discoverView').classList.add('hidden');
+      showTab('feed');
+    }
+
+    async function loadAllUsers() {
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!users || users.length === 0) {
+        document.getElementById('discoverUsersList').innerHTML = '<div class="card text-center"><p class="subtitle">No other users yet</p></div>';
+        return;
+      }
+      
+      displayUsersList(users);
+    }
+
+    async function searchUsers() {
+      const query = document.getElementById('userSearchInput').value.trim().toLowerCase();
+      
+      if (!query) {
+        loadAllUsers();
+        return;
+      }
+      
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', currentUser.id)
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .limit(50);
+      
+      if (!users || users.length === 0) {
+        document.getElementById('discoverUsersList').innerHTML = '<div class="card text-center"><p class="subtitle">No users found</p></div>';
+        return;
+      }
+      
+      displayUsersList(users);
+    }
+
+    async function displayUsersList(users) {
+      // Get follow statuses for all users
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUser.id);
+      
+      const followingIds = new Set(follows?.map(f => f.following_id) || []);
+      
+      const list = document.getElementById('discoverUsersList');
+      list.innerHTML = '<div class="wine-list">' + users.map(user => {
+        const isFollowing = followingIds.has(user.id);
+        
+        return `
+          <div class="wine-item">
+            <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+            <div class="wine-info" style="cursor: pointer;" onclick="viewUserProfile('${user.id}')">
+              <div class="wine-name">${user.display_name || user.username}</div>
+              <div class="wine-meta">@${user.username}</div>
+              ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
+            </div>
+            <button 
+              onclick="event.stopPropagation(); toggleFollow('${user.id}')" 
+              id="followBtn-${user.id}"
+              style="padding: 8px 16px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
+              ${isFollowing ? 'Following' : 'Follow'}
+            </button>
+          </div>
+        `;
+      }).join('') + '</div>';
+    }
+
+    // FOLLOW/UNFOLLOW
+    async function toggleFollow(userId) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      if (existing) {
+        // Unfollow
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        const btn = document.getElementById(`followBtn-${userId}`);
+        if (btn) {
+          btn.textContent = 'Follow';
+          btn.style.background = '#8B3A42';
+          btn.style.color = 'white';
+          btn.style.borderColor = '#8B3A42';
+        }
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        const btn = document.getElementById(`followBtn-${userId}`);
+        if (btn) {
+          btn.textContent = 'Following';
+          btn.style.background = 'white';
+          btn.style.color = '#8B3A42';
+          btn.style.borderColor = '#e0e0e0';
+        }
+      }
+      
+      // Reload feed to update with new follows
+      await loadFeed();
+    }
+
+    // VIEW USER PROFILE
+    async function viewUserProfile(userId) {
+      currentViewedProfile = userId;
+      
+      // Hide all other views
+      document.getElementById('feedView').classList.add('hidden');
+      document.getElementById('discoverView').classList.add('hidden');
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('userProfileView').classList.remove('hidden');
+      
+      // Load profile data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (!profile) return;
+      
+      // Update profile display
+      document.getElementById('viewProfileAvatar').textContent = profile.username?.substring(0, 2).toUpperCase() || 'U';
+      document.getElementById('viewProfileDisplayName').textContent = profile.display_name || profile.username;
+      document.getElementById('viewProfileUsername').textContent = '@' + profile.username;
+      document.getElementById('viewProfileBio').textContent = profile.bio || '';
+      document.getElementById('viewProfileBio').style.display = profile.bio ? 'block' : 'none';
+      
+      // Load stats
+      const { data: stats } = await supabase.rpc('get_user_stats', { user_uuid: userId });
+      if (stats && stats.length > 0) {
+        document.getElementById('viewProfileWineCount').textContent = stats[0].wines_count || 0;
+        document.getElementById('viewProfileFollowersCount').textContent = stats[0].followers_count || 0;
+        document.getElementById('viewProfileFollowingCount').textContent = stats[0].following_count || 0;
+      }
+      
+      // Check follow status and show button
+      const { data: followStatus } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      const isFollowing = !!followStatus;
+      
+      document.getElementById('followButtonContainer').innerHTML = `
+        <button 
+          onclick="toggleFollowOnProfile('${userId}')" 
+          id="profileFollowBtn"
+          style="padding: 10px 24px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer;">
+          ${isFollowing ? 'Following' : 'Follow'}
+        </button>
+      `;
+      
+      // Load wines
+      showViewProfileTab('collection');
+    }
+
+    async function toggleFollowOnProfile(userId) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      const btn = document.getElementById('profileFollowBtn');
+      
+      if (existing) {
+        // Unfollow
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        btn.textContent = 'Follow';
+        btn.style.background = '#8B3A42';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#8B3A42';
+        
+        // Update follower count
+        const currentCount = parseInt(document.getElementById('viewProfileFollowersCount').textContent);
+        document.getElementById('viewProfileFollowersCount').textContent = Math.max(0, currentCount - 1);
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        btn.textContent = 'Following';
+        btn.style.background = 'white';
+        btn.style.color = '#8B3A42';
+        btn.style.borderColor = '#e0e0e0';
+        
+        // Update follower count
+        const currentCount = parseInt(document.getElementById('viewProfileFollowersCount').textContent);
+        document.getElementById('viewProfileFollowersCount').textContent = currentCount + 1;
+      }
+    }
+
+    async function showViewProfileTab(tab) {
+      if (tab === 'collection') {
+        const { data: wines } = await supabase
+          .from('wines')
+          .select('*')
+          .eq('user_id', currentViewedProfile)
+          .order('score', { ascending: false, nullsFirst: false });
+        
+        const list = document.getElementById('viewProfileWineList');
+        const empty = document.getElementById('viewProfileEmptyState');
+        
+        if (!wines || wines.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wines.map(w => `
+            <div class="wine-item">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">🍷</div>'}
+              <div class="wine-info">
+                <div class="wine-name">${w.name}</div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
+                <div class="rank-section">
+                  <span class="rank-badge ${!w.score ? 'unranked' : ''}">${w.score ? w.score.toFixed(1) : 'Unranked'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function closeUserProfile() {
+      document.getElementById('userProfileView').classList.add('hidden');
+      
+      // Return to wherever we came from
+      if (document.getElementById('discoverView').classList.contains('hidden')) {
+        showTab('feed');
+      } else {
+        document.getElementById('discoverView').classList.remove('hidden');
+      }
     }
 
     function getTimeAgo(date) {
@@ -1190,7 +1550,7 @@
     // APP NAVIGATION
     function showTab(tab) {
       currentTab = tab;
-      ['feedView', 'profileView', 'cameraView', 'processingView', 'resultView', 'learnResultView', 'menuResultView', 'detailView', 'wishlistDetailView', 'settingsView', 'sentimentView', 'comparisonView'].forEach(id => {
+      ['feedView', 'discoverView', 'userProfileView', 'profileView', 'cameraView', 'processingView', 'resultView', 'learnResultView', 'menuResultView', 'detailView', 'wishlistDetailView', 'settingsView', 'sentimentView', 'comparisonView'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
