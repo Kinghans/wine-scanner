@@ -2015,8 +2015,12 @@
           ratings_count: wineData.ratings_count,
           price: wineData.price,
           description: wineData.description,
-          tasting_notes: wineData.tastingNotes,
-          food_pairings: wineData.foodPairings,
+          tasting_notes: wineData.tasting_notes || wineData.tastingNotes,
+          food_pairings: wineData.food_pairings || wineData.foodPairings,
+          body: wineData.body,
+          tannin: wineData.tannin,
+          sweetness: wineData.sweetness,
+          acidity: wineData.acidity,
           data_source: wineData.source,
           first_scanned_by: currentUser.id
         })
@@ -2062,11 +2066,12 @@
           body: JSON.stringify({ wineName, vintage })
         });
         
-        const result = await response.json();
-        if (result.success) {
-          result.data.source = 'openai';
-          await saveToWineCache(wineName, vintage, result.data);
-          return result.data;
+        const wineData = await response.json();
+        
+        if (wineData && wineData.name) {
+          wineData.source = 'openai';
+          await saveToWineCache(wineName, vintage, wineData);
+          return wineData;
         }
       } catch (err) {
         console.log('OpenAI failed:', err);
@@ -2342,7 +2347,7 @@
       document.getElementById('processingStatus').textContent = 'Analyzing label...';
       
       try {
-        // Call Edge Function with image
+        // Step 1: Extract wine name from image
         const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
           method: 'POST',
           headers: {
@@ -2352,23 +2357,38 @@
           body: JSON.stringify({ imageData: img })
         });
         
-        const result = await response.json();
+        const extracted = await response.json();
         
-        if (result.success && result.data) {
-          const wine = result.data;
-          
-          document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
-          document.getElementById('wineName').value = wine.name || '';
-          document.getElementById('wineVintage').value = wine.vintage || '';
-          document.getElementById('wineProducer').value = wine.producer || '';
-          document.getElementById('wineRegion').value = wine.region || '';
-          document.getElementById('wineVarietal').value = wine.varietal || '';
-          
-          document.getElementById('processingView').classList.add('hidden');
-          document.getElementById('resultView').classList.remove('hidden');
-        } else {
-          throw new Error('Could not extract wine info');
+        if (!extracted.name) {
+          throw new Error('Could not read wine name from label');
         }
+        
+        // Step 2: Do full wine lookup with flavor profiles
+        document.getElementById('processingStatus').textContent = 'Finding wine details...';
+        const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
+        
+        // Step 3: Populate form with all data
+        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+        document.getElementById('wineName').value = wineInfo?.name || extracted.name;
+        document.getElementById('wineVintage').value = wineInfo?.vintage || extracted.vintage || '';
+        document.getElementById('wineProducer').value = wineInfo?.producer || '';
+        document.getElementById('wineRegion').value = wineInfo?.region || '';
+        document.getElementById('wineVarietal').value = wineInfo?.varietal || '';
+        
+        // Auto-select wine type if available
+        if (wineInfo?.type) {
+          document.getElementById('wineType').value = wineInfo.type.toLowerCase();
+          toggleTanninField(); // Show/hide tannin based on type
+        }
+        
+        // Auto-populate flavor profiles if available
+        if (wineInfo?.body) document.getElementById('bodySlider').value = wineInfo.body;
+        if (wineInfo?.tannin) document.getElementById('tanninSlider').value = wineInfo.tannin;
+        if (wineInfo?.sweetness) document.getElementById('sweetnessSlider').value = wineInfo.sweetness;
+        if (wineInfo?.acidity) document.getElementById('aciditySlider').value = wineInfo.acidity;
+        
+        document.getElementById('processingView').classList.add('hidden');
+        document.getElementById('resultView').classList.remove('hidden');
       } catch (err) {
         console.error('Process error:', err);
         alert('Could not read label. Please try again or enter manually.');
