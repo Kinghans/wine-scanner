@@ -298,6 +298,20 @@
     .image-placeholder .icon { font-size: 120px; }
     .option-buttons { display: flex; gap: 12px; flex-direction: column; }
     .help-text { font-size: 12px; color: #999; margin-top: 4px; }
+    .wine-type-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-right: 8px;
+    }
+    .type-red { background: #8B3A42; color: white; }
+    .type-white { background: #F4E4C1; color: #5D4E37; }
+    .type-rose { background: #FFB6C1; color: #8B3A62; }
+    .type-sparkling { background: #E6F3FF; color: #1E3A8A; }
+    .type-dessert { background: #DDA15E; color: white; }
     .comparison-options { display: flex; gap: 12px; margin-bottom: 24px; }
     .wine-comparison-card {
       flex: 1;
@@ -841,6 +855,17 @@
         <div class="form-group">
           <label>Varietal / Blend</label>
           <input type="text" id="wineVarietal" placeholder="e.g., Cabernet Sauvignon">
+        </div>
+        <div class="form-group">
+          <label>Wine Type *</label>
+          <select id="wineType" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
+            <option value="">Select type...</option>
+            <option value="red">🍷 Red Wine</option>
+            <option value="white">🥂 White Wine</option>
+            <option value="rose">🌸 Rosé Wine</option>
+            <option value="sparkling">🍾 Sparkling Wine</option>
+            <option value="dessert">🍯 Dessert Wine</option>
+          </select>
         </div>
         <div class="btn-group">
           <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
@@ -2077,7 +2102,10 @@
             <div class="wine-item" onclick="showDetail('${w.id}')">
               ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">🍷</div>'}
               <div class="wine-info">
-                <div class="wine-name">${w.name}</div>
+                <div class="wine-name">
+                  ${w.wine_type ? `<span class="wine-type-badge type-${w.wine_type}">${w.wine_type}</span>` : ''}
+                  ${w.name}
+                </div>
                 <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
                 <div class="rank-section">
                   <span class="rank-badge ${!w.score ? 'unranked' : ''}">${w.score ? w.score.toFixed(1) : 'Unranked'}</span>
@@ -2381,8 +2409,15 @@
 
     async function saveWine() {
       const name = document.getElementById('wineName').value.trim();
+      const wineType = document.getElementById('wineType').value;
+      
       if (!name) {
         alert('Please enter a wine name');
+        return;
+      }
+      
+      if (!wineType) {
+        alert('Please select a wine type');
         return;
       }
       
@@ -2402,6 +2437,7 @@
           producer: document.getElementById('wineProducer').value || null,
           region: document.getElementById('wineRegion').value || null,
           varietal: document.getElementById('wineVarietal').value || null,
+          wine_type: wineType,
           image_url: imageUrl
         })
         .select()
@@ -2452,11 +2488,13 @@
         .eq('id', currentWineId)
         .single();
       
+      // Only compare wines of the SAME TYPE (red vs red, white vs white, etc.)
       const { data: sameWines } = await supabase
         .from('wines')
         .select('*')
         .eq('user_id', currentUser.id)
         .eq('sentiment', sentiment)
+        .eq('wine_type', currentWine.wine_type) // Only same type!
         .not('id', 'eq', currentWineId)
         .not('score', 'is', null)
         .order('score', { ascending: false });
@@ -2469,7 +2507,7 @@
           .eq('id', currentWineId);
         
         await recalculateAllScores();
-        alert(`Ranked! Score: ${score}/10`);
+        alert(`Ranked! Score: ${score}/10\nFirst ${currentWine.wine_type} wine in this category!`);
         showTab('profile');
         return;
       }
