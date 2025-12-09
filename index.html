@@ -2447,15 +2447,32 @@
       document.getElementById('learnWineName').innerHTML = `${w.name || 'Unknown'} ${sourceBadge}`;
 
       let infoHTML = '';
-      if (w.type) infoHTML += `<div style="margin-bottom: 16px;"><span class="type-badge" style="background: #8B3A42;">${w.type} Wine</span></div>`;
+      if (w.type) infoHTML += `<div style="margin-bottom: 16px;"><span class="wine-type-badge type-${w.type.toLowerCase()}">${w.type}</span></div>`;
+      
+      // Show Public Rating prominently at top
+      if (w.rating) {
+        infoHTML += `
+          <div class="form-group" style="background: #fafafa; padding: 16px; border-radius: 12px; border: 1px solid #f0f0f0;">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 28px; background: #f0f0f0; color: #1a1a1a;">${w.rating.toFixed(1)}</span>
+              <div style="font-size: 13px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize; font-size: 14px;">${w.source === 'vivino' ? 'Vivino' : w.source === 'openai' ? 'AI Estimate' : 'External'}</div>
+                <div>Average rating${w.ratings_count ? ` (${w.ratings_count.toLocaleString()} ratings)` : ''}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
       if (w.description) infoHTML += `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${w.description}</div></div>`;
       if (w.vintage) infoHTML += `<div class="form-group"><label>Vintage</label><div style="color: #666">${w.vintage}</div></div>`;
       if (w.producer) infoHTML += `<div class="form-group"><label>Producer</label><div style="color: #666">${w.producer}</div></div>`;
       if (w.region) infoHTML += `<div class="form-group"><label>Region</label><div style="color: #666">${w.region}</div></div>`;
       if (w.varietal) infoHTML += `<div class="form-group"><label>Varietal</label><div style="color: #666">${w.varietal}</div></div>`;
-      if (w.rating) infoHTML += `<div class="form-group"><label>Rating</label><div style="color: #666">⭐ ${w.rating.toFixed(1)}</div></div>`;
-      if (w.tastingNotes) infoHTML += `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${w.tastingNotes}</div></div>`;
-      if (w.price) infoHTML += `<div class="form-group"><label>Price</label><div style="color: #666">${w.price}</div></div>`;
+      if (w.tasting_notes || w.tastingNotes) infoHTML += `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${w.tasting_notes || w.tastingNotes}</div></div>`;
+      if (w.food_pairings || w.foodPairings) infoHTML += `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${w.food_pairings || w.foodPairings}</div></div>`;
+      if (w.price) infoHTML += `<div class="form-group"><label>Estimated Price</label><div style="color: #666">${w.price}</div></div>`;
 
       document.getElementById('learnWineInfo').innerHTML = infoHTML;
     }
@@ -2777,6 +2794,22 @@
       
       if (!wine) return;
       
+      // Get public ratings from cache if available
+      let publicRating = null;
+      let publicSource = null;
+      if (wine.wine_cache_id) {
+        const { data: cached } = await supabase
+          .from('wine_cache')
+          .select('rating, ratings_count, data_source')
+          .eq('id', wine.wine_cache_id)
+          .single();
+        
+        if (cached && cached.rating) {
+          publicRating = cached.rating;
+          publicSource = cached.data_source;
+        }
+      }
+      
       const sent = {'yes': '😍 Loved It', 'ok': '😊 It Was OK', 'no': '😐 Didn\'t Like It'};
       
       document.getElementById('profileView').classList.add('hidden');
@@ -2792,6 +2825,19 @@
         ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
         ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
         ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        
+        ${publicRating ? `
+          <div class="form-group">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 24px; background: #f0f0f0; color: #1a1a1a;">${publicRating.toFixed(1)}</span>
+              <div style="font-size: 12px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize;">${publicSource || 'External'}</div>
+                <div>Average rating</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
         
         ${wine.body || wine.sweetness || wine.acidity || wine.tannin ? `
           <div class="flavor-profile">
@@ -2848,9 +2894,9 @@
         ` : ''}
         
         <div class="form-group">
-          <label>Your Rating</label>
+          <label>Your Grapevine Rating</label>
           <div style="display: flex; align-items: center; gap: 12px;">
-            <span class="rank-badge ${!wine.score ? 'unranked' : ''}" style="font-size: 24px;">${wine.score ? wine.score.toFixed(1) : 'Not ranked'}</span>
+            <span class="rank-badge ${!wine.score ? 'unranked' : ''}" style="font-size: 24px;">${wine.score ? wine.score.toFixed(1) : 'Not yet rated'}</span>
             ${wine.sentiment ? `<span style="font-size: 18px;">${sent[wine.sentiment]}</span>` : ''}
           </div>
           ${wine.comparisons ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
@@ -2877,6 +2923,22 @@
       
       if (!wine) return;
       
+      // Get public ratings from cache if available
+      let publicRating = null;
+      let publicSource = null;
+      if (wine.wine_cache_id) {
+        const { data: cached } = await supabase
+          .from('wine_cache')
+          .select('rating, ratings_count, data_source')
+          .eq('id', wine.wine_cache_id)
+          .single();
+        
+        if (cached && cached.rating) {
+          publicRating = cached.rating;
+          publicSource = cached.data_source;
+        }
+      }
+      
       document.getElementById('profileView').classList.add('hidden');
       document.getElementById('wishlistDetailView').classList.remove('hidden');
       
@@ -2884,14 +2946,28 @@
         ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
         <h2>${wine.name}</h2>
         <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
-        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="type-badge" style="background: #8B3A42;">${wine.wine_type} Wine</span></div>` : ''}
+        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="wine-type-badge type-${wine.wine_type}">${wine.wine_type}</span></div>` : ''}
+        
+        ${publicRating ? `
+          <div class="form-group">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 24px; background: #f0f0f0; color: #1a1a1a;">${publicRating.toFixed(1)}</span>
+              <div style="font-size: 12px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize;">${publicSource || 'External'}</div>
+                <div>Average rating</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
         ${wine.description ? `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${wine.description}</div></div>` : ''}
         ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
         ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
         ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
         ${wine.tasting_notes ? `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${wine.tasting_notes}</div></div>` : ''}
         ${wine.food_pairings ? `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${wine.food_pairings}</div></div>` : ''}
-        ${wine.price ? `<div class="form-group"><label>Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
+        ${wine.price ? `<div class="form-group"><label>Estimated Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
         <div class="btn-group">
           <button class="btn btn-primary" onclick="addWishlistWineToCollection('${id}')">
             <span>➕</span><span>Add to Collection</span>
