@@ -176,13 +176,84 @@
     }
     .processing { text-align: center; padding: 40px 20px; }
     .spinner {
-      border: 4px solid #f0f0f0;
-      border-top: 4px solid #8B3A42;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
+      width: 80px;
+      height: 80px;
       margin: 0 auto 20px;
+      position: relative;
+    }
+    .wine-bottle {
+      width: 60px;
+      height: 80px;
+      background: #8B3A42;
+      border-radius: 5px 5px 15px 15px;
+      position: relative;
+      margin: 0 auto;
+      animation: tilt 2s ease-in-out infinite;
+    }
+    .wine-bottle::before {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 20px;
+      background: #722F37;
+      border-radius: 3px 3px 0 0;
+    }
+    .wine-pour {
+      position: absolute;
+      bottom: -40px;
+      left: 30px;
+      width: 4px;
+      height: 0;
+      background: linear-gradient(to bottom, #8B3A42, #722F37);
+      animation: pour 2s ease-in-out infinite;
+      border-radius: 0 0 2px 2px;
+    }
+    .wine-glass {
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 35px;
+      border: 3px solid #8B3A42;
+      border-top: none;
+      border-radius: 0 0 20px 20px;
+      overflow: hidden;
+    }
+    .wine-glass::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 0;
+      background: linear-gradient(to top, #8B3A42, rgba(139, 58, 66, 0.7));
+      animation: fill 2s ease-in-out infinite;
+    }
+    .wine-glass::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 15px;
+      background: #8B3A42;
+    }
+    @keyframes tilt {
+      0%, 100% { transform: rotate(-15deg); }
+      50% { transform: rotate(-25deg); }
+    }
+    @keyframes pour {
+      0%, 20% { height: 0; }
+      40%, 100% { height: 40px; }
+    }
+    @keyframes fill {
+      0%, 40% { height: 0; }
+      100% { height: 100%; }
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .form-group { margin-bottom: 16px; }
@@ -559,7 +630,13 @@
     <div class="header">
       <div class="header-content">
         <h1><span>🍇</span><span>Grapevine</span></h1>
-        <button class="logout-btn" onclick="handleLogout()">🚪</button>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button class="settings-btn" onclick="showNotifications()" style="position: relative;">
+            🔔
+            <span id="notificationBadge" class="hidden" style="position: absolute; top: 0; right: 0; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 600;">0</span>
+          </button>
+          <button class="logout-btn" onclick="handleLogout()">🚪</button>
+        </div>
       </div>
     </div>
 
@@ -596,15 +673,15 @@
         <div id="viewProfileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
         <div id="followButtonContainer" style="margin-top: 12px;"></div>
         <div class="profile-stats">
-          <div class="stat-item">
+          <div class="stat-item" style="cursor: pointer;" onclick="showViewProfileWines()">
             <div class="stat-number" id="viewProfileWineCount">0</div>
             <div class="stat-label">Wines</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" style="cursor: pointer;" onclick="showFollowersList(currentViewedProfile, 'followers')">
             <div class="stat-number" id="viewProfileFollowersCount">0</div>
             <div class="stat-label">Followers</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" style="cursor: pointer;" onclick="showFollowersList(currentViewedProfile, 'following')">
             <div class="stat-number" id="viewProfileFollowingCount">0</div>
             <div class="stat-label">Following</div>
           </div>
@@ -613,6 +690,7 @@
 
       <div class="profile-tabs">
         <button class="profile-tab active" onclick="showViewProfileTab('collection')">Collection</button>
+        <button class="profile-tab" onclick="showViewProfileTab('saved')">Saved</button>
       </div>
 
       <div id="viewProfileCollectionTab" style="padding: 20px;">
@@ -623,9 +701,38 @@
           <p class="subtitle">This user hasn't added any wines</p>
         </div>
       </div>
+
+      <div id="viewProfileSavedTab" class="hidden" style="padding: 20px;">
+        <div id="viewProfileWishlistList" class="wine-list"></div>
+        <div id="viewProfileWishlistEmptyState" class="card text-center hidden">
+          <div class="wine-icon">⭐</div>
+          <h2>No saved wines</h2>
+          <p class="subtitle">This user hasn't saved any wines yet</p>
+        </div>
+      </div>
       
       <div style="padding: 20px;">
         <button class="btn btn-secondary" onclick="closeUserProfile()">Back</button>
+      </div>
+    </div>
+
+    <div id="followersModal" class="modal-overlay hidden" onclick="closeFollowersModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title" id="followersModalTitle">Followers</div>
+          <button class="modal-close" onclick="closeFollowersModal()">×</button>
+        </div>
+        <div id="followersModalList" class="wine-list"></div>
+      </div>
+    </div>
+
+    <div id="notificationsModal" class="modal-overlay hidden" onclick="closeNotificationsModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">Notifications</div>
+          <button class="modal-close" onclick="closeNotificationsModal()">×</button>
+        </div>
+        <div id="notificationsList"></div>
       </div>
     </div>
 
@@ -637,15 +744,15 @@
         <div id="profileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
         <button onclick="editProfile()" style="margin-top: 12px; padding: 6px 16px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; color: #8B3A42; font-size: 14px; font-weight: 500; cursor: pointer;">Edit Profile</button>
         <div class="profile-stats">
-          <div class="stat-item">
+          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'followers')" style="cursor: pointer;">
             <div class="stat-number" id="profileWineCount">0</div>
             <div class="stat-label">Wines</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'followers')" style="cursor: pointer;">
             <div class="stat-number" id="profileFollowersCount">0</div>
             <div class="stat-label">Followers</div>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'following')" style="cursor: pointer;">
             <div class="stat-number" id="profileFollowingCount">0</div>
             <div class="stat-label">Following</div>
           </div>
@@ -655,6 +762,7 @@
       <div class="profile-tabs">
         <button class="profile-tab active" onclick="showProfileTab('collection')">Collection</button>
         <button class="profile-tab" onclick="showProfileTab('saved')">Saved</button>
+        <button class="profile-tab" onclick="showProfileTab('following')">Following</button>
       </div>
 
       <div id="profileCollectionTab" style="padding: 20px;">
@@ -672,6 +780,18 @@
           <div class="wine-icon">⭐</div>
           <h2>No saved wines yet</h2>
           <p class="subtitle">Save wines you want to try later!</p>
+        </div>
+      </div>
+
+      <div id="profileFollowingTab" class="hidden" style="padding: 20px;">
+        <div id="profileFollowingList" class="wine-list"></div>
+        <div id="profileFollowingEmptyState" class="card text-center hidden">
+          <div class="wine-icon">👥</div>
+          <h2>Not following anyone yet</h2>
+          <p class="subtitle">Discover and follow users to see their wine journey!</p>
+          <button class="btn btn-primary" onclick="showDiscoverUsers()" style="margin-top: 16px;">
+            <span>👥</span><span>Discover Users</span>
+          </button>
         </div>
       </div>
     </div>
@@ -697,9 +817,14 @@
       </div>
     </div>
 
-    <div id="processingView" class="content hidden">
-      <div class="card processing">
-        <div class="spinner"></div>
+    <div id="processingView" class="content hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.95); z-index: 3000;">
+      <div class="card processing" style="max-width: 400px; width: 90%;">
+        <div class="spinner">
+          <div class="wine-bottle">
+            <div class="wine-pour"></div>
+          </div>
+          <div class="wine-glass"></div>
+        </div>
         <h2>Processing...</h2>
         <p class="subtitle" id="processingStatus">Please wait</p>
       </div>
@@ -1009,6 +1134,7 @@
       }
       
       await loadFeed();
+      await loadNotifications();
     }
 
     function editProfile() {
@@ -1185,12 +1311,22 @@
         .single();
       
       if (existing) {
-        // Unfollow
+        // Unfollow - show confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
         await supabase
           .from('follows')
           .delete()
           .eq('follower_id', currentUser.id)
           .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
         
         const btn = document.getElementById(`followBtn-${userId}`);
         if (btn) {
@@ -1208,6 +1344,16 @@
             following_id: userId
           });
         
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+        
         const btn = document.getElementById(`followBtn-${userId}`);
         if (btn) {
           btn.textContent = 'Following';
@@ -1219,6 +1365,87 @@
       
       // Reload feed to update with new follows
       await loadFeed();
+    }
+
+    // NOTIFICATIONS
+    async function loadNotifications() {
+      const { data: notifications, error } = await supabase
+        .from('notifications')
+        .select(`
+          *,
+          profiles!notifications_from_user_id_fkey(username, display_name)
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error loading notifications:', error);
+        return 0;
+      }
+      
+      const unreadCount = notifications?.filter(n => !n.read).length || 0;
+      
+      const badge = document.getElementById('notificationBadge');
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      
+      return unreadCount;
+    }
+
+    async function showNotifications() {
+      const { data: notifications } = await supabase
+        .from('notifications')
+        .select(`
+          *,
+          profiles!notifications_from_user_id_fkey(username, display_name)
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!notifications || notifications.length === 0) {
+        document.getElementById('notificationsList').innerHTML = '<div class="card text-center"><p class="subtitle">No notifications yet</p></div>';
+      } else {
+        document.getElementById('notificationsList').innerHTML = '<div class="wine-list">' + notifications.map(notif => {
+          const timeAgo = getTimeAgo(new Date(notif.created_at));
+          const profile = notif.profiles;
+          
+          return `
+            <div class="wine-item" style="background: ${notif.read ? 'white' : '#fef9f9'}; cursor: pointer;" onclick="handleNotificationClick('${notif.id}', '${notif.from_user_id}')">
+              <div class="post-avatar" style="flex-shrink: 0;">${profile?.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="wine-info">
+                <div class="wine-name">${notif.message}</div>
+                <div class="wine-meta">${timeAgo}</div>
+              </div>
+              ${!notif.read ? '<div style="width: 8px; height: 8px; background: #8B3A42; border-radius: 50%; flex-shrink: 0;"></div>' : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+      
+      // Mark all as read
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', currentUser.id);
+      
+      document.getElementById('notificationBadge').classList.add('hidden');
+      document.getElementById('notificationsModal').classList.remove('hidden');
+    }
+
+    async function handleNotificationClick(notifId, fromUserId) {
+      closeNotificationsModal();
+      viewUserProfile(fromUserId);
+    }
+
+    function closeNotificationsModal(event) {
+      if (event && !event.target.classList.contains('modal-overlay')) return;
+      document.getElementById('notificationsModal').classList.add('hidden');
     }
 
     // VIEW USER PROFILE
@@ -1289,12 +1516,22 @@
       const btn = document.getElementById('profileFollowBtn');
       
       if (existing) {
-        // Unfollow
+        // Unfollow - show confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
         await supabase
           .from('follows')
           .delete()
           .eq('follower_id', currentUser.id)
           .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
         
         btn.textContent = 'Follow';
         btn.style.background = '#8B3A42';
@@ -1313,6 +1550,16 @@
             following_id: userId
           });
         
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+        
         btn.textContent = 'Following';
         btn.style.background = 'white';
         btn.style.color = '#8B3A42';
@@ -1325,7 +1572,13 @@
     }
 
     async function showViewProfileTab(tab) {
+      document.querySelectorAll('.profile-tab').forEach(btn => btn.classList.remove('active'));
+      event?.target?.classList.add('active');
+
       if (tab === 'collection') {
+        document.getElementById('viewProfileCollectionTab').classList.remove('hidden');
+        document.getElementById('viewProfileSavedTab').classList.add('hidden');
+        
         const { data: wines } = await supabase
           .from('wines')
           .select('*')
@@ -1341,7 +1594,7 @@
         } else {
           empty.classList.add('hidden');
           list.innerHTML = wines.map(w => `
-            <div class="wine-item">
+            <div class="wine-item" onclick="showOtherUserWineDetail('${w.id}')">
               ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">🍷</div>'}
               <div class="wine-info">
                 <div class="wine-name">${w.name}</div>
@@ -1353,7 +1606,186 @@
             </div>
           `).join('');
         }
+      } else if (tab === 'saved') {
+        document.getElementById('viewProfileCollectionTab').classList.add('hidden');
+        document.getElementById('viewProfileSavedTab').classList.remove('hidden');
+        
+        const { data: wishlist } = await supabase
+          .from('wishlist')
+          .select('*')
+          .eq('user_id', currentViewedProfile)
+          .order('created_at', { ascending: false });
+        
+        const list = document.getElementById('viewProfileWishlistList');
+        const empty = document.getElementById('viewProfileWishlistEmptyState');
+        
+        if (!wishlist || wishlist.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wishlist.map(w => `
+            <div class="wine-item" onclick="showOtherUserWishlistDetail('${w.id}')">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">⭐</div>'}
+              <div class="wine-info">
+                <div class="wine-name">${w.name}</div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || 'Unknown'}</div>
+              </div>
+            </div>
+          `).join('');
+        }
       }
+    }
+
+    function showViewProfileWines() {
+      const collectionTab = document.querySelector('#userProfileView .profile-tab');
+      collectionTab.click();
+    }
+
+    async function showOtherUserWineDetail(id) {
+      const { data: wine } = await supabase
+        .from('wines')
+        .select('*, profiles!wines_user_id_fkey(username, display_name)')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      const sent = {'yes': '😍 Loved It', 'ok': '😊 It Was OK', 'no': '😐 Didn\'t Like It'};
+      const profile = wine.profiles;
+      
+      document.getElementById('userProfileView').classList.add('hidden');
+      document.getElementById('detailView').classList.remove('hidden');
+      
+      document.getElementById('detailCard').innerHTML = `
+        <div style="text-align: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-size: 14px; color: #666;">
+            From <strong>${profile.display_name || profile.username}</strong>'s collection
+          </div>
+        </div>
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        <div class="form-group">
+          <label>Their Rating</label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="rank-badge ${!wine.score ? 'unranked' : ''}" style="font-size: 24px;">${wine.score ? wine.score.toFixed(1) : 'Not ranked'}</span>
+            ${wine.sentiment ? `<span style="font-size: 18px;">${sent[wine.sentiment]}</span>` : ''}
+          </div>
+          ${wine.comparisons ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+        </div>
+        ${wine.notes ? `<div class="form-group"><label>Their Notes</label><div style="background: #fafafa; padding: 12px; border-radius: 8px; color: #1a1a1a;">${wine.notes}</div></div>` : ''}
+        <button class="btn btn-secondary" onclick="backToUserProfile()">Back to Profile</button>
+      `;
+    }
+
+    async function showOtherUserWishlistDetail(id) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*, profiles!wishlist_user_id_fkey(username, display_name)')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      const profile = wine.profiles;
+      
+      document.getElementById('userProfileView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.remove('hidden');
+      
+      document.getElementById('wishlistDetailCard').innerHTML = `
+        <div style="text-align: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-size: 14px; color: #666;">
+            From <strong>${profile.display_name || profile.username}</strong>'s saved wines
+          </div>
+        </div>
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="type-badge" style="background: #8B3A42;">${wine.wine_type} Wine</span></div>` : ''}
+        ${wine.description ? `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${wine.description}</div></div>` : ''}
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        ${wine.tasting_notes ? `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${wine.tasting_notes}</div></div>` : ''}
+        ${wine.food_pairings ? `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${wine.food_pairings}</div></div>` : ''}
+        ${wine.price ? `<div class="form-group"><label>Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
+        <button class="btn btn-secondary" onclick="backToUserProfile()">Back to Profile</button>
+      `;
+    }
+
+    function backToUserProfile() {
+      document.getElementById('detailView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.add('hidden');
+      document.getElementById('userProfileView').classList.remove('hidden');
+    }
+
+    // FOLLOWERS/FOLLOWING LISTS
+    async function showFollowersList(userId, type) {
+      document.getElementById('followersModalTitle').textContent = type === 'followers' ? 'Followers' : 'Following';
+      
+      let query;
+      if (type === 'followers') {
+        query = supabase
+          .from('follows')
+          .select('follower_id, profiles!follows_follower_id_fkey(id, username, display_name, bio)')
+          .eq('following_id', userId);
+      } else {
+        query = supabase
+          .from('follows')
+          .select('following_id, profiles!follows_following_id_fkey(id, username, display_name, bio)')
+          .eq('follower_id', userId);
+      }
+      
+      const { data } = await query;
+      
+      if (!data || data.length === 0) {
+        document.getElementById('followersModalList').innerHTML = '<div class="card text-center"><p class="subtitle">No ' + type + ' yet</p></div>';
+      } else {
+        const users = data.map(d => d.profiles);
+        
+        // Get follow statuses
+        const { data: follows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+        
+        const followingIds = new Set(follows?.map(f => f.following_id) || []);
+        
+        document.getElementById('followersModalList').innerHTML = users.map(user => {
+          const isFollowing = followingIds.has(user.id);
+          const isCurrentUser = user.id === currentUser.id;
+          
+          return `
+            <div class="wine-item">
+              <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="wine-info" style="cursor: pointer;" onclick="closeFollowersModal(); viewUserProfile('${user.id}')">
+                <div class="wine-name">${user.display_name || user.username}</div>
+                <div class="wine-meta">@${user.username}</div>
+                ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
+              </div>
+              ${!isCurrentUser ? `
+                <button 
+                  onclick="event.stopPropagation(); toggleFollow('${user.id}')" 
+                  id="followBtn-${user.id}"
+                  style="padding: 8px 16px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
+                  ${isFollowing ? 'Following' : 'Follow'}
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+      
+      document.getElementById('followersModal').classList.remove('hidden');
+    }
+
+    function closeFollowersModal(event) {
+      if (event && !event.target.classList.contains('modal-overlay')) return;
+      document.getElementById('followersModal').classList.add('hidden');
     }
 
     function closeUserProfile() {
@@ -1578,6 +2010,7 @@
       if (tab === 'collection') {
         document.getElementById('profileCollectionTab').classList.remove('hidden');
         document.getElementById('profileSavedTab').classList.add('hidden');
+        document.getElementById('profileFollowingTab')?.classList.add('hidden');
         
         const { data: wines } = await supabase
           .from('wines')
@@ -1609,6 +2042,7 @@
       } else if (tab === 'saved') {
         document.getElementById('profileCollectionTab').classList.add('hidden');
         document.getElementById('profileSavedTab').classList.remove('hidden');
+        document.getElementById('profileFollowingTab')?.classList.add('hidden');
         
         const { data: wishlist } = await supabase
           .from('wishlist')
@@ -1634,7 +2068,71 @@
             </div>
           `).join('');
         }
+      } else if (tab === 'following') {
+        document.getElementById('profileCollectionTab').classList.add('hidden');
+        document.getElementById('profileSavedTab').classList.add('hidden');
+        document.getElementById('profileFollowingTab').classList.remove('hidden');
+        
+        const { data: following } = await supabase
+          .from('follows')
+          .select('following_id, profiles!follows_following_id_fkey(id, username, display_name, bio)')
+          .eq('follower_id', currentUser.id);
+        
+        const list = document.getElementById('profileFollowingList');
+        const empty = document.getElementById('profileFollowingEmptyState');
+        
+        if (!following || following.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = following.map(f => {
+            const user = f.profiles;
+            return `
+              <div class="wine-item">
+                <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+                <div class="wine-info" style="cursor: pointer;" onclick="viewUserProfile('${user.id}')">
+                  <div class="wine-name">${user.display_name || user.username}</div>
+                  <div class="wine-meta">@${user.username}</div>
+                  ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
+                </div>
+                <button 
+                  onclick="event.stopPropagation(); unfollowFromProfile('${user.id}')" 
+                  style="padding: 8px 16px; background: white; color: #dc2626; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
+                  Unfollow
+                </button>
+              </div>
+            `;
+          }).join('');
+        }
       }
+    }
+
+    async function unfollowFromProfile(userId) {
+      if (!confirm('Unfollow this user?')) return;
+      
+      await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId);
+      
+      // Delete the follow notification
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userId)
+        .eq('from_user_id', currentUser.id)
+        .eq('type', 'follow');
+      
+      // Reload the following tab
+      showProfileTab('following');
+      
+      // Update stats
+      await loadUserData();
+      
+      // Reload feed
+      await loadFeed();
     }
 
     function showAddModal() {
