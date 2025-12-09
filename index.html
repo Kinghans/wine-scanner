@@ -2051,10 +2051,11 @@
     }
 
     async function showProfileTab(tab) {
-      document.querySelectorAll('.profile-tab').forEach(btn => btn.classList.remove('active'));
-      if (event?.target) event.target.classList.add('active');
-
+      const tabs = document.querySelectorAll('#profileView .profile-tab');
+      tabs.forEach(btn => btn.classList.remove('active'));
+      
       if (tab === 'collection') {
+        tabs[0]?.classList.add('active'); // Activate Collection tab button
         document.getElementById('profileCollectionTab').classList.remove('hidden');
         document.getElementById('profileSavedTab').classList.add('hidden');
         
@@ -2086,6 +2087,7 @@
           `).join('');
         }
       } else if (tab === 'saved') {
+        tabs[1]?.classList.add('active'); // Activate Saved tab button
         document.getElementById('profileCollectionTab').classList.add('hidden');
         document.getElementById('profileSavedTab').classList.remove('hidden');
         
