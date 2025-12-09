@@ -673,7 +673,7 @@
         <div id="viewProfileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
         <div id="followButtonContainer" style="margin-top: 12px;"></div>
         <div class="profile-stats">
-          <div class="stat-item" style="cursor: pointer;" onclick="showViewProfileWines()">
+          <div class="stat-item" style="cursor: pointer;" onclick="showViewProfileTab('collection')">
             <div class="stat-number" id="viewProfileWineCount">0</div>
             <div class="stat-label">Wines</div>
           </div>
@@ -744,7 +744,7 @@
         <div id="profileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
         <button onclick="editProfile()" style="margin-top: 12px; padding: 6px 16px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; color: #8B3A42; font-size: 14px; font-weight: 500; cursor: pointer;">Edit Profile</button>
         <div class="profile-stats">
-          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'followers')" style="cursor: pointer;">
+          <div class="stat-item" onclick="showProfileTab('collection')" style="cursor: pointer;">
             <div class="stat-number" id="profileWineCount">0</div>
             <div class="stat-label">Wines</div>
           </div>
@@ -762,7 +762,6 @@
       <div class="profile-tabs">
         <button class="profile-tab active" onclick="showProfileTab('collection')">Collection</button>
         <button class="profile-tab" onclick="showProfileTab('saved')">Saved</button>
-        <button class="profile-tab" onclick="showProfileTab('following')">Following</button>
       </div>
 
       <div id="profileCollectionTab" style="padding: 20px;">
@@ -780,18 +779,6 @@
           <div class="wine-icon">⭐</div>
           <h2>No saved wines yet</h2>
           <p class="subtitle">Save wines you want to try later!</p>
-        </div>
-      </div>
-
-      <div id="profileFollowingTab" class="hidden" style="padding: 20px;">
-        <div id="profileFollowingList" class="wine-list"></div>
-        <div id="profileFollowingEmptyState" class="card text-center hidden">
-          <div class="wine-icon">👥</div>
-          <h2>Not following anyone yet</h2>
-          <p class="subtitle">Discover and follow users to see their wine journey!</p>
-          <button class="btn btn-primary" onclick="showDiscoverUsers()" style="margin-top: 16px;">
-            <span>👥</span><span>Discover Users</span>
-          </button>
         </div>
       </div>
     </div>
@@ -1572,10 +1559,12 @@
     }
 
     async function showViewProfileTab(tab) {
-      document.querySelectorAll('.profile-tab').forEach(btn => btn.classList.remove('active'));
-      event?.target?.classList.add('active');
-
+      // Update active tab button
+      const tabs = document.querySelectorAll('#userProfileView .profile-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      
       if (tab === 'collection') {
+        tabs[0]?.classList.add('active');
         document.getElementById('viewProfileCollectionTab').classList.remove('hidden');
         document.getElementById('viewProfileSavedTab').classList.add('hidden');
         
@@ -1607,6 +1596,7 @@
           `).join('');
         }
       } else if (tab === 'saved') {
+        tabs[1]?.classList.add('active');
         document.getElementById('viewProfileCollectionTab').classList.add('hidden');
         document.getElementById('viewProfileSavedTab').classList.remove('hidden');
         
@@ -1769,7 +1759,7 @@
               </div>
               ${!isCurrentUser ? `
                 <button 
-                  onclick="event.stopPropagation(); toggleFollow('${user.id}')" 
+                  onclick="event.stopPropagation(); toggleFollowInModal('${user.id}', '${userId}', '${type}')" 
                   id="followBtn-${user.id}"
                   style="padding: 8px 16px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
                   ${isFollowing ? 'Following' : 'Follow'}
@@ -1781,6 +1771,63 @@
       }
       
       document.getElementById('followersModal').classList.remove('hidden');
+    }
+
+    async function toggleFollowInModal(userId, listOwnerId, type) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      if (existing) {
+        // Unfollow with confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+      }
+      
+      // Refresh the modal
+      await showFollowersList(listOwnerId, type);
+      
+      // Update stats if viewing own profile
+      if (listOwnerId === currentUser.id) {
+        await loadUserData();
+      }
+      
+      // Reload feed
+      await loadFeed();
     }
 
     function closeFollowersModal(event) {
@@ -2010,7 +2057,6 @@
       if (tab === 'collection') {
         document.getElementById('profileCollectionTab').classList.remove('hidden');
         document.getElementById('profileSavedTab').classList.add('hidden');
-        document.getElementById('profileFollowingTab')?.classList.add('hidden');
         
         const { data: wines } = await supabase
           .from('wines')
@@ -2042,7 +2088,6 @@
       } else if (tab === 'saved') {
         document.getElementById('profileCollectionTab').classList.add('hidden');
         document.getElementById('profileSavedTab').classList.remove('hidden');
-        document.getElementById('profileFollowingTab')?.classList.add('hidden');
         
         const { data: wishlist } = await supabase
           .from('wishlist')
@@ -2068,71 +2113,7 @@
             </div>
           `).join('');
         }
-      } else if (tab === 'following') {
-        document.getElementById('profileCollectionTab').classList.add('hidden');
-        document.getElementById('profileSavedTab').classList.add('hidden');
-        document.getElementById('profileFollowingTab').classList.remove('hidden');
-        
-        const { data: following } = await supabase
-          .from('follows')
-          .select('following_id, profiles!follows_following_id_fkey(id, username, display_name, bio)')
-          .eq('follower_id', currentUser.id);
-        
-        const list = document.getElementById('profileFollowingList');
-        const empty = document.getElementById('profileFollowingEmptyState');
-        
-        if (!following || following.length === 0) {
-          list.innerHTML = '';
-          empty.classList.remove('hidden');
-        } else {
-          empty.classList.add('hidden');
-          list.innerHTML = following.map(f => {
-            const user = f.profiles;
-            return `
-              <div class="wine-item">
-                <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
-                <div class="wine-info" style="cursor: pointer;" onclick="viewUserProfile('${user.id}')">
-                  <div class="wine-name">${user.display_name || user.username}</div>
-                  <div class="wine-meta">@${user.username}</div>
-                  ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
-                </div>
-                <button 
-                  onclick="event.stopPropagation(); unfollowFromProfile('${user.id}')" 
-                  style="padding: 8px 16px; background: white; color: #dc2626; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
-                  Unfollow
-                </button>
-              </div>
-            `;
-          }).join('');
-        }
       }
-    }
-
-    async function unfollowFromProfile(userId) {
-      if (!confirm('Unfollow this user?')) return;
-      
-      await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', currentUser.id)
-        .eq('following_id', userId);
-      
-      // Delete the follow notification
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', userId)
-        .eq('from_user_id', currentUser.id)
-        .eq('type', 'follow');
-      
-      // Reload the following tab
-      showProfileTab('following');
-      
-      // Update stats
-      await loadUserData();
-      
-      // Reload feed
-      await loadFeed();
     }
 
     function showAddModal() {
