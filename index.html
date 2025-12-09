@@ -312,6 +312,52 @@
     .type-rose { background: #FFB6C1; color: #8B3A62; }
     .type-sparkling { background: #E6F3FF; color: #1E3A8A; }
     .type-dessert { background: #DDA15E; color: white; }
+    .flavor-profile {
+      margin: 20px 0;
+      padding: 16px;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+    }
+    .flavor-profile h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      color: #1a1a1a;
+    }
+    .flavor-scale {
+      margin: 16px 0;
+    }
+    .flavor-scale-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .flavor-scale-bar {
+      height: 10px;
+      background: linear-gradient(to right, #e0e0e0, #8B3A42);
+      border-radius: 5px;
+      position: relative;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .flavor-scale-marker {
+      position: absolute;
+      top: -5px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border: 3px solid #8B3A42;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+    .flavor-scale-input {
+      width: 100%;
+      margin-top: 8px;
+    }
     .comparison-options { display: flex; gap: 12px; margin-bottom: 24px; }
     .wine-comparison-card {
       flex: 1;
@@ -858,7 +904,7 @@
         </div>
         <div class="form-group">
           <label>Wine Type *</label>
-          <select id="wineType" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
+          <select id="wineType" onchange="toggleTanninField()" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
             <option value="">Select type...</option>
             <option value="red">🍷 Red Wine</option>
             <option value="white">🥂 White Wine</option>
@@ -867,6 +913,47 @@
             <option value="dessert">🍯 Dessert Wine</option>
           </select>
         </div>
+        
+        <div class="flavor-profile">
+          <h3>Flavor Profile (Optional)</h3>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Light</span>
+              <span style="font-weight: 600;">Body</span>
+              <span>Bold</span>
+            </div>
+            <input type="range" id="bodySlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale" id="tanninScale">
+            <div class="flavor-scale-label">
+              <span>Smooth</span>
+              <span style="font-weight: 600;">Tannin</span>
+              <span>Tannic</span>
+            </div>
+            <input type="range" id="tanninSlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Dry</span>
+              <span style="font-weight: 600;">Sweetness</span>
+              <span>Sweet</span>
+            </div>
+            <input type="range" id="sweetnessSlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Soft</span>
+              <span style="font-weight: 600;">Acidity</span>
+              <span>Acidic</span>
+            </div>
+            <input type="range" id="aciditySlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+        </div>
+        
         <div class="btn-group">
           <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
             <span>💾</span><span>Save to Collection</span>
@@ -2427,6 +2514,12 @@
         imageUrl = await uploadWineImage(currentImageData);
       }
       
+      // Get flavor profile values
+      const body = parseInt(document.getElementById('bodySlider').value);
+      const sweetness = parseInt(document.getElementById('sweetnessSlider').value);
+      const acidity = parseInt(document.getElementById('aciditySlider').value);
+      const tannin = wineType === 'red' ? parseInt(document.getElementById('tanninSlider').value) : null;
+      
       const { data, error } = await supabase
         .from('wines')
         .insert({
@@ -2438,6 +2531,10 @@
           region: document.getElementById('wineRegion').value || null,
           varietal: document.getElementById('wineVarietal').value || null,
           wine_type: wineType,
+          body,
+          tannin,
+          sweetness,
+          acidity,
           image_url: imageUrl
         })
         .select()
@@ -2466,6 +2563,18 @@
       document.getElementById('sentimentWineName').textContent = document.getElementById('wineName').value;
       document.getElementById('resultView').classList.add('hidden');
       document.getElementById('sentimentView').classList.remove('hidden');
+    }
+
+    function toggleTanninField() {
+      const wineType = document.getElementById('wineType').value;
+      const tanninScale = document.getElementById('tanninScale');
+      
+      // Only show tannin for red wines
+      if (wineType === 'red') {
+        tanninScale.style.display = 'block';
+      } else {
+        tanninScale.style.display = 'none';
+      }
     }
 
     async function setSentiment(s) {
@@ -2655,11 +2764,69 @@
       
       document.getElementById('detailCard').innerHTML = `
         ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>'}
-        <h2>${wine.name}</h2>
+        <h2>
+          ${wine.wine_type ? `<span class="wine-type-badge type-${wine.wine_type}">${wine.wine_type}</span>` : ''}
+          ${wine.name}
+        </h2>
         <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
         ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
         ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
         ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        
+        ${wine.body || wine.sweetness || wine.acidity || wine.tannin ? `
+          <div class="flavor-profile">
+            <h3>Flavor Profile</h3>
+            ${wine.body ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Light</span>
+                  <span style="font-weight: 600;">Body</span>
+                  <span>Bold</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.body - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.tannin && wine.wine_type === 'red' ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Smooth</span>
+                  <span style="font-weight: 600;">Tannin</span>
+                  <span>Tannic</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.tannin - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.sweetness ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Dry</span>
+                  <span style="font-weight: 600;">Sweetness</span>
+                  <span>Sweet</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.sweetness - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.acidity ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Soft</span>
+                  <span style="font-weight: 600;">Acidity</span>
+                  <span>Acidic</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.acidity - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+        
         <div class="form-group">
           <label>Your Rating</label>
           <div style="display: flex; align-items: center; gap: 12px;">
