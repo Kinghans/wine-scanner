@@ -1,212 +1,138 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
-    // Get OpenAI key from database
-    const { data: config } = await supabaseClient
-      .from('app_config')
-      .select('value')
-      .eq('key', 'openai_api_key')
-      .single()
-
-    const openaiKey = config?.value
-    if (!openaiKey) {
-      return new Response(JSON.stringify({ error: 'OpenAI key not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    const body = await req.json()
-    const { wineName, vintage, imageData, extractMenu } = body
-
-    console.log('Request type:', { hasWineName: !!wineName, hasImageData: !!imageData, extractMenu })
-
-    // MODE 1: Menu extraction (multi-wine from image)
-    if (extractMenu && imageData) {
-      console.log('Menu extraction mode')
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Extract ALL wines from this restaurant menu. For each wine, provide: name, vintage (if visible), producer (if visible), glass price, bottle price. Return as JSON array: [{name, vintage, producer, glassPrice, bottlePrice}]'
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: imageData }
-                }
-              ]
-            }
-          ],
-          max_tokens: 2000
-        })
-      })
-
-      const result = await response.json()
-      const content = result.choices[0].message.content
-      const wines = JSON.parse(content.replace(/```json\n?|\n?```/g, ''))
-
-      return new Response(JSON.stringify({ wines }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // MODE 2: Image extraction (single wine name/vintage from image)
-    if (imageData && !wineName) {
-      console.log('Image extraction mode')
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Extract the wine name and vintage from this label. Return ONLY JSON: {name: "wine name", vintage: "YYYY"}'
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: imageData }
-                }
-              ]
-            }
-          ],
-          max_tokens: 100
-        })
-      })
-
-      const result = await response.json()
-      const content = result.choices[0].message.content
-      const extracted = JSON.parse(content.replace(/```json\n?|\n?```/g, ''))
-
-      console.log('Extracted:', extracted)
-      return new Response(JSON.stringify(extracted), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // MODE 3: Text-based wine search with full details + flavor profiles
-    if (wineName) {
-      console.log('Text search mode:', wineName, vintage)
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a wine expert. Provide accurate information about wines including flavor profiles on a 1-5 scale. Always return valid JSON.'
-            },
-            {
-              role: 'user',
-              content: `Provide detailed information about "${wineName}" ${vintage ? vintage : ''}. Return ONLY valid JSON with this exact structure (no markdown, no code blocks):
-{
-  "name": "Full wine name",
-  "vintage": "Year or null",
-  "producer": "Producer name",
-  "region": "Wine region",
-  "country": "Country",
-  "varietal": "Grape variety",
-  "type": "red/white/rose/sparkling/dessert",
-  "description": "2-3 sentence description",
-  "tasting_notes": "Flavor notes",
-  "food_pairings": "Food pairing suggestions",
-  "price": "$X-Y range",
-  "rating": 4.2,
-  "body": 3,
-  "tannin": 3,
-  "sweetness": 2,
-  "acidity": 4
-}
-
-CRITICAL: 
-- type must be exactly one of: red, white, rose, sparkling, dessert (lowercase)
-- body, tannin, sweetness, acidity must be integers 1-5
-- tannin should be null if type is not "red"
-- rating should be a decimal number like 4.2
-- Return raw JSON only, no code blocks`
-            }
-          ],
-          max_tokens: 800
-        })
-      })
-
-      const result = await response.json()
-      let content = result.choices[0].message.content
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Grapevine Edge Function Test</title>
+  <style>
+    body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
+    button { padding: 12px 24px; background: #8B3A42; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 8px; }
+    button:hover { background: #6d2d33; }
+    pre { background: #f5f5f5; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+  </style>
+</head>
+<body>
+  <h1>🍷 Grapevine Edge Function Test</h1>
+  
+  <h2>Test 1: Text Search (works without OpenAI)</h2>
+  <button onclick="testTextSearch()">Test Text Search</button>
+  <pre id="textResult">Click button to test...</pre>
+  
+  <h2>Test 2: Check OpenAI Key</h2>
+  <button onclick="checkOpenAIKey()">Check OpenAI Key</button>
+  <pre id="keyResult">Click button to test...</pre>
+  
+  <h2>Test 3: Image Extraction (requires OpenAI)</h2>
+  <p>Take a photo of a wine label:</p>
+  <input type="file" id="imageInput" accept="image/*" capture="environment">
+  <button onclick="testImageExtraction()">Test Image Extraction</button>
+  <pre id="imageResult">Upload image and click button...</pre>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://nzhjtwnpznqaehwegwvs.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aGp0d25wem5xYWVod2Vnd3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTEwMDIsImV4cCI6MjA4MDUyNzAwMn0.U5LNTTBuiX_seQewL8kOKno-XNCdRZcPOgFkHGpox_A';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    async function testTextSearch() {
+      const result = document.getElementById('textResult');
+      result.textContent = 'Testing...';
       
-      // Clean up response - remove markdown code blocks if present
-      content = content.replace(/```json\n?|\n?```/g, '').trim()
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ 
+            wineName: 'Caymus Cabernet Sauvignon',
+            vintage: '2020'
+          })
+        });
+        
+        const data = await response.json();
+        result.className = 'success';
+        result.textContent = 'SUCCESS!\n\n' + JSON.stringify(data, null, 2);
+      } catch (err) {
+        result.className = 'error';
+        result.textContent = 'ERROR: ' + err.message;
+      }
+    }
+    
+    async function checkOpenAIKey() {
+      const result = document.getElementById('keyResult');
+      result.textContent = 'Checking...';
       
-      const wineData = JSON.parse(content)
+      try {
+        const { data, error } = await supabase
+          .from('app_config')
+          .select('value')
+          .eq('key', 'openai_api_key')
+          .single();
+        
+        if (error) throw error;
+        
+        if (data && data.value) {
+          result.className = 'success';
+          result.textContent = 'SUCCESS! OpenAI key is configured.\n\nKey: ' + data.value.substring(0, 20) + '...';
+        } else {
+          result.className = 'error';
+          result.textContent = 'ERROR: OpenAI key not found in database';
+        }
+      } catch (err) {
+        result.className = 'error';
+        result.textContent = 'ERROR: ' + err.message;
+      }
+    }
+    
+    async function testImageExtraction() {
+      const result = document.getElementById('imageResult');
+      const input = document.getElementById('imageInput');
       
-      // Validate and normalize
-      if (!['red', 'white', 'rose', 'sparkling', 'dessert'].includes(wineData.type)) {
-        wineData.type = 'red' // default
+      if (!input.files || !input.files[0]) {
+        result.className = 'error';
+        result.textContent = 'ERROR: Please select an image first';
+        return;
       }
       
-      // Ensure flavor values are integers 1-5
-      wineData.body = Math.max(1, Math.min(5, parseInt(wineData.body) || 3))
-      wineData.sweetness = Math.max(1, Math.min(5, parseInt(wineData.sweetness) || 3))
-      wineData.acidity = Math.max(1, Math.min(5, parseInt(wineData.acidity) || 3))
+      result.textContent = 'Processing image...';
       
-      // Tannin only for red wines
-      if (wineData.type === 'red') {
-        wineData.tannin = Math.max(1, Math.min(5, parseInt(wineData.tannin) || 3))
-      } else {
-        wineData.tannin = null
+      try {
+        // Convert image to base64
+        const file = input.files[0];
+        const reader = new FileReader();
+        
+        const imageData = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        // Call Edge Function
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ imageData })
+        });
+        
+        const data = await response.json();
+        
+        if (data.name) {
+          result.className = 'success';
+          result.textContent = 'SUCCESS! Extracted wine info:\n\n' + JSON.stringify(data, null, 2);
+        } else {
+          result.className = 'error';
+          result.textContent = 'ERROR: No wine name extracted\n\n' + JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        result.className = 'error';
+        result.textContent = 'ERROR: ' + err.message;
       }
-
-      console.log('Wine data:', wineData)
-      return new Response(JSON.stringify(wineData), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
     }
-
-    // No valid mode detected
-    return new Response(JSON.stringify({ error: 'Invalid request - need wineName or imageData' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-
-  } catch (error) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-})
+  </script>
+</body>
+</html>
