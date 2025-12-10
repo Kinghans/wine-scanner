@@ -2421,6 +2421,7 @@
       document.getElementById('processingStatus').textContent = 'Reading label...';
       
       try {
+        // Step 1: Extract wine name and vintage from image
         const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
           method: 'POST',
           headers: {
@@ -2430,18 +2431,33 @@
           body: JSON.stringify({ imageData })
         });
         
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-          learnedWineData = result.data;
-          learnedWineData.image = imageData;
-          displayLearnedWine();
-        } else {
-          throw new Error('Could not find wine info');
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
         }
+        
+        const extracted = await response.json();
+        console.log('Extracted from image (Learn mode):', extracted);
+        
+        if (!extracted || !extracted.name) {
+          throw new Error('Could not read wine name from label');
+        }
+        
+        // Step 2: Do full wine lookup
+        document.getElementById('processingStatus').textContent = 'Finding wine details...';
+        const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
+        console.log('Wine info found (Learn mode):', wineInfo);
+        
+        if (!wineInfo) {
+          throw new Error('Could not find wine information');
+        }
+        
+        // Step 3: Display learned wine info
+        learnedWineData = wineInfo;
+        learnedWineData.image = imageData;
+        displayLearnedWine();
       } catch (err) {
         console.error('Learn error:', err);
-        alert('Could not identify wine');
+        alert('Could not identify wine: ' + err.message + '\n\nPlease try:\n1. Taking a clearer photo\n2. Using "Enter Manually" option');
         closeAddModal();
       }
     }
@@ -3121,17 +3137,23 @@
           })
         });
         
-        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
+        }
         
-        if (result.success && result.data && result.data.length > 0) {
-          menuWines = result.data;
+        const result = await response.json();
+        console.log('Menu extraction result:', result);
+        
+        // Edge Function returns { wines: [...] } for menu extraction
+        if (result.wines && result.wines.length > 0) {
+          menuWines = result.wines;
           displayMenuWines();
         } else {
           throw new Error('No wines found on menu');
         }
       } catch (err) {
         console.error('Menu extraction error:', err);
-        alert('Could not read menu. Please ensure photo is clear and try again.');
+        alert('Could not read menu: ' + err.message + '\n\nPlease ensure photo shows wine list clearly.');
         closeAddModal();
       }
     }
