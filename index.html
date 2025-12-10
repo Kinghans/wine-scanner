@@ -273,19 +273,27 @@
     .settings-btn, .logout-btn {
       background: none;
       border: none;
-      color: #8B3A42;
-      font-size: 24px;
+      color: #1a1a1a;
       cursor: pointer;
-      padding: 4px;
-      width: 32px;
-      height: 32px;
+      padding: 8px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
-    .settings-btn:hover, .logout-btn:hover { background: #fafafa; }
+    .settings-btn svg, .logout-btn svg {
+      stroke: #1a1a1a;
+      transition: stroke 0.2s;
+    }
+    .settings-btn:hover, .logout-btn:hover { 
+      background: #f0f0f0; 
+    }
+    .settings-btn:hover svg, .logout-btn:hover svg {
+      stroke: #8B3A42;
+    }
     .image-preview { width: 100%; border-radius: 12px; margin-bottom: 16px; border: 1px solid #f0f0f0; }
     .image-placeholder {
       text-align: center;
@@ -422,9 +430,20 @@
       border: none;
       transition: color 0.2s;
     }
+    .nav-item .icon { 
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-item .icon svg {
+      stroke: #666;
+      transition: stroke 0.2s;
+    }
     .nav-item:hover { color: #8B3A42; }
+    .nav-item:hover .icon svg { stroke: #8B3A42; }
     .nav-item.active { color: #8B3A42; }
-    .nav-item .icon { font-size: 24px; }
+    .nav-item.active .icon svg { stroke: #8B3A42; }
     .nav-item .label { font-size: 11px; font-weight: 500; }
     .nav-item.add-button .icon {
       font-size: 32px;
@@ -689,13 +708,22 @@
   <div id="appContainer" class="container hidden">
     <div class="header">
       <div class="header-content">
-        <h1><span>🍇</span><span>Grapevine</span></h1>
+        <h1 style="cursor: pointer;" onclick="showTab('feed')"><span>🍇</span><span>Grapevine</span></h1>
         <div style="display: flex; gap: 12px; align-items: center;">
           <button class="settings-btn" onclick="showNotifications()" style="position: relative;">
-            🔔
-            <span id="notificationBadge" class="hidden" style="position: absolute; top: 0; right: 0; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 600;">0</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span id="notificationBadge" class="hidden" style="position: absolute; top: -2px; right: -2px; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 600;">0</span>
           </button>
-          <button class="logout-btn" onclick="handleLogout()">🚪</button>
+          <button class="logout-btn" onclick="handleLogout()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -1053,14 +1081,25 @@
 
     <div class="bottom-nav">
       <button class="nav-item active" onclick="showTab('feed')">
-        <div class="icon">🌐</div>
+        <div class="icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11a9 9 0 0 1 9 9"></path>
+            <path d="M4 4a16 16 0 0 1 16 16"></path>
+            <circle cx="5" cy="19" r="1"></circle>
+          </svg>
+        </div>
         <div class="label">Feed</div>
       </button>
       <button class="nav-item add-button" onclick="showAddModal()">
         <div class="icon">+</div>
       </button>
       <button class="nav-item" onclick="showTab('profile')">
-        <div class="icon">👤</div>
+        <div class="icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
         <div class="label">Profile</div>
       </button>
     </div>
@@ -1073,19 +1112,17 @@
         <button class="modal-close" onclick="closeAddModal()">×</button>
       </div>
       <div class="option-buttons">
-        <button class="btn btn-primary" onclick="startCamera('add')">
-          <span>📷</span><span>Scan & Add to Collection</span>
-        </button>
-        <button class="btn btn-secondary" onclick="startCamera('learn')">
-          <span>🔍</span><span>Learn About a Wine</span>
+        <button class="btn btn-primary" onclick="startCamera('learn')">
+          <span>📷</span><span>Scan Wine Label</span>
         </button>
         <button class="btn btn-secondary" onclick="startCamera('menu')">
           <span>🍽️</span><span>Scan Restaurant Menu</span>
         </button>
         <button class="btn btn-secondary" onclick="startManualEntry()">
-          <span>✍️</span><span>Enter Manually</span>
+          <span>✍️</span><span>Enter Wine Name</span>
         </button>
       </div>
+      <p class="help-text" style="text-align: center; margin-top: 12px; color: #999;">After scanning or entering, you'll see wine details and can add to collection or save for later</p>
     </div>
   </div>
 
@@ -2252,16 +2289,35 @@
       if (e.target.classList.contains('modal-overlay')) closeAddModal();
     }
 
-    function startManualEntry() {
+    async function startManualEntry() {
       closeAddModal();
-      currentImageData = null;
-      document.getElementById('imageContainer').innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
-      document.getElementById('wineName').value = '';
-      document.getElementById('wineVintage').value = '';
-      document.getElementById('wineProducer').value = '';
-      document.getElementById('wineRegion').value = '';
-      document.getElementById('wineVarietal').value = '';
-      document.getElementById('resultView').classList.remove('hidden');
+      
+      const wineName = prompt('Enter wine name:');
+      if (!wineName) return;
+      
+      const vintage = prompt('Enter vintage year (optional):');
+      
+      document.getElementById('processingView').classList.remove('hidden');
+      document.getElementById('processingStatus').textContent = 'Searching for wine...';
+      
+      try {
+        const wineInfo = await hybridWineSearch(wineName, vintage);
+        
+        if (!wineInfo) {
+          alert('Could not find wine information. Please try again with a more specific name.');
+          document.getElementById('processingView').classList.add('hidden');
+          return;
+        }
+        
+        // Go to Learn view
+        learnedWineData = wineInfo;
+        learnedWineData.image = null; // No image for manual entry
+        displayLearnedWine();
+      } catch (err) {
+        console.error('Manual entry error:', err);
+        alert('Error searching for wine: ' + err.message);
+        document.getElementById('processingView').classList.add('hidden');
+      }
     }
 
     async function startCamera(mode) {
@@ -2334,86 +2390,12 @@
       
       if (currentMode === 'menu') {
         await extractMenuWines(currentImageData);
-      } else if (currentMode === 'learn') {
-        await extractWineAndLearn(currentImageData);
       } else {
-        await processImageForAdd(currentImageData);
+        // Everything else goes to Learn flow
+        await extractWineAndLearn(currentImageData);
       }
     }
 
-    async function processImageForAdd(img) {
-      document.getElementById('cameraView').classList.add('hidden');
-      document.getElementById('processingView').classList.remove('hidden');
-      document.getElementById('processingStatus').textContent = 'Analyzing label...';
-      
-      try {
-        // Step 1: Extract wine name from image
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({ imageData: img })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Edge Function error: ${response.status}`);
-        }
-        
-        const extracted = await response.json();
-        console.log('Extracted from image:', extracted);
-        
-        // If extraction failed, open form with image for manual entry
-        if (!extracted || !extracted.name) {
-          console.warn('No wine name extracted, opening manual entry');
-          document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
-          document.getElementById('wineName').value = '';
-          document.getElementById('wineVintage').value = '';
-          document.getElementById('processingView').classList.add('hidden');
-          document.getElementById('resultView').classList.remove('hidden');
-          alert('Could not automatically read the label. Please enter wine details manually.');
-          return;
-        }
-        
-        // Step 2: Do full wine lookup with flavor profiles
-        document.getElementById('processingStatus').textContent = 'Finding wine details...';
-        const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
-        console.log('Wine info found:', wineInfo);
-        
-        // Step 3: Populate form with all data
-        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
-        document.getElementById('wineName').value = wineInfo?.name || extracted.name;
-        document.getElementById('wineVintage').value = wineInfo?.vintage || extracted.vintage || '';
-        document.getElementById('wineProducer').value = wineInfo?.producer || '';
-        document.getElementById('wineRegion').value = wineInfo?.region || '';
-        document.getElementById('wineVarietal').value = wineInfo?.varietal || '';
-        
-        // Auto-select wine type if available
-        if (wineInfo?.type) {
-          const typeValue = wineInfo.type.toLowerCase();
-          document.getElementById('wineType').value = typeValue;
-          toggleTanninField(); // Show/hide tannin based on type
-        }
-        
-        // Auto-populate flavor profiles if available
-        if (wineInfo?.body) document.getElementById('bodySlider').value = wineInfo.body;
-        if (wineInfo?.tannin) document.getElementById('tanninSlider').value = wineInfo.tannin;
-        if (wineInfo?.sweetness) document.getElementById('sweetnessSlider').value = wineInfo.sweetness;
-        if (wineInfo?.acidity) document.getElementById('aciditySlider').value = wineInfo.acidity;
-        
-        document.getElementById('processingView').classList.add('hidden');
-        document.getElementById('resultView').classList.remove('hidden');
-      } catch (err) {
-        console.error('Process error:', err);
-        // Still open form with image for manual entry
-        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
-        document.getElementById('wineName').value = '';
-        document.getElementById('processingView').classList.add('hidden');
-        document.getElementById('resultView').classList.remove('hidden');
-        alert('Scanning error: ' + err.message + '\n\nPlease enter wine details manually.');
-      }
-    }
 
     async function extractWineAndLearn(imageData) {
       document.getElementById('cameraView').classList.add('hidden');
@@ -2688,7 +2670,8 @@
           .eq('id', currentWineId);
         
         await recalculateAllScores();
-        alert(`Ranked! Score: ${score}/10\nFirst ${currentWine.wine_type} wine in this category!`);
+        const wineTypeLabel = currentWine.wine_type ? `${currentWine.wine_type} wine` : 'wine';
+        alert(`Ranked! Score: ${score}/10\nFirst ${wineTypeLabel} in this category!`);
         showTab('profile');
         return;
       }
@@ -3033,6 +3016,11 @@
           producer: wine.producer,
           region: wine.region,
           varietal: wine.varietal,
+          wine_type: wine.wine_type,
+          body: wine.body,
+          tannin: wine.tannin,
+          sweetness: wine.sweetness,
+          acidity: wine.acidity,
           image_url: wine.image_url
         })
         .select()
@@ -3056,7 +3044,6 @@
       // Delete from wishlist
       await supabase.from('wishlist').delete().eq('id', wishlistId);
       
-      alert('Wine added to collection!');
       document.getElementById('wishlistDetailView').classList.add('hidden');
       showSentimentPrompt();
     }
