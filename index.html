@@ -2357,15 +2357,29 @@
           body: JSON.stringify({ imageData: img })
         });
         
-        const extracted = await response.json();
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
+        }
         
-        if (!extracted.name) {
-          throw new Error('Could not read wine name from label');
+        const extracted = await response.json();
+        console.log('Extracted from image:', extracted);
+        
+        // If extraction failed, open form with image for manual entry
+        if (!extracted || !extracted.name) {
+          console.warn('No wine name extracted, opening manual entry');
+          document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+          document.getElementById('wineName').value = '';
+          document.getElementById('wineVintage').value = '';
+          document.getElementById('processingView').classList.add('hidden');
+          document.getElementById('resultView').classList.remove('hidden');
+          alert('Could not automatically read the label. Please enter wine details manually.');
+          return;
         }
         
         // Step 2: Do full wine lookup with flavor profiles
         document.getElementById('processingStatus').textContent = 'Finding wine details...';
         const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
+        console.log('Wine info found:', wineInfo);
         
         // Step 3: Populate form with all data
         document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
@@ -2377,7 +2391,8 @@
         
         // Auto-select wine type if available
         if (wineInfo?.type) {
-          document.getElementById('wineType').value = wineInfo.type.toLowerCase();
+          const typeValue = wineInfo.type.toLowerCase();
+          document.getElementById('wineType').value = typeValue;
           toggleTanninField(); // Show/hide tannin based on type
         }
         
@@ -2391,8 +2406,12 @@
         document.getElementById('resultView').classList.remove('hidden');
       } catch (err) {
         console.error('Process error:', err);
-        alert('Could not read label. Please try again or enter manually.');
-        closeCamera();
+        // Still open form with image for manual entry
+        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+        document.getElementById('wineName').value = '';
+        document.getElementById('processingView').classList.add('hidden');
+        document.getElementById('resultView').classList.remove('hidden');
+        alert('Scanning error: ' + err.message + '\n\nPlease enter wine details manually.');
       }
     }
 
