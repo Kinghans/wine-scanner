@@ -997,15 +997,32 @@
         <h2 id="learnWineName">Wine Name</h2>
         <div id="learnWineInfo"></div>
         <div class="btn-group">
-          <button class="btn btn-primary" onclick="saveToWishlist()">
-            <span>⭐</span><span>Save for Later</span>
-          </button>
-          <button class="btn btn-secondary" onclick="addLearnedWineToCollection()">
+          <button class="btn btn-primary" onclick="addLearnedWineToCollection()">
             <span>➕</span><span>Add to Collection</span>
+          </button>
+          <button class="btn btn-secondary" onclick="saveToWishlist()">
+            <span>⭐</span><span>Save for Later</span>
           </button>
         </div>
         <div style="height: 12px"></div>
         <button class="btn btn-secondary" onclick="closeAddModal()">Done</button>
+      </div>
+    </div>
+
+    <div id="addNotesView" class="content hidden">
+      <div class="card">
+        <h2 id="notesWineName">Wine Name</h2>
+        <p class="subtitle">Add your tasting notes (optional)</p>
+        <div class="form-group">
+          <label>Tasting Notes</label>
+          <textarea id="initialWineNotes" placeholder="What did you notice? Flavors, aromas, impressions..." rows="6"></textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="proceedToSentiment()">
+            <span>Next</span>
+          </button>
+          <button class="btn btn-secondary" onclick="skipNotesAndRate()">Skip & Rate</button>
+        </div>
       </div>
     </div>
 
@@ -1031,6 +1048,12 @@
       <div class="card">
         <h2>Settings</h2>
         <p class="subtitle">App configuration</p>
+        <div class="form-group">
+          <label>Profile Avatar</label>
+          <div id="avatarGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px;">
+            <!-- Avatars will be populated by JS -->
+          </div>
+        </div>
         <div class="form-group">
           <label>Display Name</label>
           <input type="text" id="settingsDisplayName" placeholder="Your name">
@@ -1115,14 +1138,14 @@
         <button class="btn btn-primary" onclick="startCamera('learn')">
           <span>📷</span><span>Scan Wine Label</span>
         </button>
-        <button class="btn btn-secondary" onclick="startCamera('menu')">
-          <span>🍽️</span><span>Scan Restaurant Menu</span>
-        </button>
         <button class="btn btn-secondary" onclick="startManualEntry()">
           <span>✍️</span><span>Enter Wine Name</span>
         </button>
+        <button class="btn btn-secondary" onclick="startCamera('menu')">
+          <span>🍽️</span><span>Scan Restaurant Menu</span>
+        </button>
       </div>
-      <p class="help-text" style="text-align: center; margin-top: 12px; color: #999;">After scanning or entering, you'll see wine details and can add to collection or save for later</p>
+      <p class="help-text" style="text-align: center; margin-top: 12px; color: #999;">Scan or search to see wine details, then add to collection or save for later</p>
     </div>
   </div>
 
@@ -1279,8 +1302,49 @@
       document.getElementById('settingsDisplayName').value = currentProfile.display_name || '';
       document.getElementById('settingsBio').value = currentProfile.bio || '';
       
+      // Populate avatar options
+      const avatarGrid = document.getElementById('avatarGrid');
+      const avatars = [
+        '🍷', '🍇', '🍾', '🥂', '🍺', '🍻', '🥃', '🍶',
+        '🍹', '🍸', '🧃', '🥤', '🍴', '🍽️', '🔥', '⭐',
+        '🌟', '✨', '💫', '🎨', '🎭', '🎪', '🎬', '🎸'
+      ];
+      
+      let selectedAvatar = currentProfile.avatar_url || '🍷';
+      
+      avatarGrid.innerHTML = avatars.map(emoji => `
+        <div onclick="selectAvatar('${emoji}')" style="
+          width: 60px; 
+          height: 60px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          font-size: 32px; 
+          cursor: pointer; 
+          border-radius: 12px;
+          border: 3px solid ${emoji === selectedAvatar ? '#8B3A42' : '#f0f0f0'};
+          transition: all 0.2s;
+        " class="avatar-option" data-emoji="${emoji}">
+          ${emoji}
+        </div>
+      `).join('');
+      
       document.getElementById('profileView').classList.add('hidden');
       document.getElementById('settingsView').classList.remove('hidden');
+    }
+
+    function selectAvatar(emoji) {
+      // Update all avatar options
+      document.querySelectorAll('.avatar-option').forEach(el => {
+        if (el.dataset.emoji === emoji) {
+          el.style.borderColor = '#8B3A42';
+        } else {
+          el.style.borderColor = '#f0f0f0';
+        }
+      });
+      
+      // Store selected avatar temporarily
+      window.selectedAvatar = emoji;
     }
 
     async function loadFeed() {
@@ -2147,12 +2211,43 @@
     }
 
     // IMAGE UPLOAD TO SUPABASE STORAGE
+    async function cropImageToCenter(imageData) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate crop dimensions (center 70% of image)
+          const cropPercent = 0.7;
+          const cropWidth = img.width * cropPercent;
+          const cropHeight = img.height * cropPercent;
+          const cropX = (img.width - cropWidth) / 2;
+          const cropY = (img.height - cropHeight) / 2;
+          
+          // Set canvas to crop size
+          canvas.width = cropWidth;
+          canvas.height = cropHeight;
+          
+          // Draw cropped image
+          ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+          
+          // Convert back to base64
+          resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.src = imageData;
+      });
+    }
+
     async function uploadWineImage(imageData) {
       if (!imageData) return null;
       
       try {
+        // Smart crop to center 70% (removes background clutter)
+        const croppedImage = await cropImageToCenter(imageData);
+        
         // Convert base64 to blob
-        const response = await fetch(imageData);
+        const response = await fetch(croppedImage);
         const blob = await response.blob();
         
         // Generate unique filename
@@ -2497,17 +2592,72 @@
     async function addLearnedWineToCollection() {
       if (!learnedWineData) return;
       
-      const w = learnedWineData;
-      document.getElementById('imageContainer').innerHTML = w.image ? `<img src="${w.image}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>';
-      
-      document.getElementById('wineName').value = w.name || '';
-      document.getElementById('wineVintage').value = w.vintage || '';
-      document.getElementById('wineProducer').value = w.producer || '';
-      document.getElementById('wineRegion').value = w.region || '';
-      document.getElementById('wineVarietal').value = w.varietal || '';
-      
+      // Show notes view
+      document.getElementById('notesWineName').textContent = learnedWineData.name;
+      document.getElementById('initialWineNotes').value = '';
       document.getElementById('learnResultView').classList.add('hidden');
-      document.getElementById('resultView').classList.remove('hidden');
+      document.getElementById('addNotesView').classList.remove('hidden');
+    }
+
+    async function proceedToSentiment() {
+      const notes = document.getElementById('initialWineNotes').value;
+      
+      // Save wine to collection with notes
+      const w = learnedWineData;
+      
+      // Upload image if exists
+      let imageUrl = null;
+      if (w.image && !w.image.startsWith('http')) {
+        imageUrl = await uploadWineImage(w.image);
+      } else {
+        imageUrl = w.image; // Already a URL
+      }
+      
+      const { data, error } = await supabase.from('wines').insert({
+        user_id: currentUser.id,
+        wine_cache_id: currentWineCacheId || w.wine_cache_id,
+        name: w.name,
+        vintage: w.vintage,
+        producer: w.producer,
+        region: w.region,
+        varietal: w.varietal,
+        wine_type: w.type,
+        body: w.body,
+        tannin: w.tannin,
+        sweetness: w.sweetness,
+        acidity: w.acidity,
+        notes: notes || null,
+        image_url: imageUrl
+      }).select().single();
+      
+      if (error) {
+        alert('Error adding wine: ' + error.message);
+        return;
+      }
+      
+      currentWineId = data.id;
+      
+      await supabase.from('activities').insert({
+        user_id: currentUser.id,
+        wine_id: data.id,
+        activity_type: 'added',
+        wine_name: w.name,
+        wine_vintage: w.vintage
+      });
+      
+      // If from wishlist, delete it
+      if (w.wishlist_id) {
+        await supabase.from('wishlist').delete().eq('id', w.wishlist_id);
+      }
+      
+      // Proceed to sentiment
+      document.getElementById('addNotesView').classList.add('hidden');
+      showSentimentPrompt();
+    }
+
+    function skipNotesAndRate() {
+      document.getElementById('initialWineNotes').value = '';
+      proceedToSentiment();
     }
 
     async function saveToWishlist() {
@@ -2651,6 +2801,18 @@
         .eq('id', currentWineId)
         .single();
       
+      // Fix: If wine_type is missing, ask user to set it
+      if (!currentWine.wine_type) {
+        const wineType = prompt('Please select wine type:\n1 = Red\n2 = White\n3 = Rosé\n4 = Sparkling\n5 = Dessert', '1');
+        const typeMap = {'1': 'red', '2': 'white', '3': 'rose', '4': 'sparkling', '5': 'dessert'};
+        currentWine.wine_type = typeMap[wineType] || 'red';
+        
+        await supabase
+          .from('wines')
+          .update({ wine_type: currentWine.wine_type })
+          .eq('id', currentWineId);
+      }
+      
       // Only compare wines of the SAME TYPE (red vs red, white vs white, etc.)
       const { data: sameWines } = await supabase
         .from('wines')
@@ -2670,8 +2832,8 @@
           .eq('id', currentWineId);
         
         await recalculateAllScores();
-        const wineTypeLabel = currentWine.wine_type ? `${currentWine.wine_type} wine` : 'wine';
-        alert(`Ranked! Score: ${score}/10\nFirst ${wineTypeLabel} in this category!`);
+        const wineTypeLabel = currentWine.wine_type || 'wine';
+        alert(`Ranked! Score: ${score}/10\nFirst ${wineTypeLabel} wine in this category!`);
         showTab('profile');
         return;
       }
@@ -3006,46 +3168,29 @@
       
       if (!wine) return;
       
-      const { data, error } = await supabase
-        .from('wines')
-        .insert({
-          user_id: currentUser.id,
-          wine_cache_id: wine.wine_cache_id,
-          name: wine.name,
-          vintage: wine.vintage,
-          producer: wine.producer,
-          region: wine.region,
-          varietal: wine.varietal,
-          wine_type: wine.wine_type,
-          body: wine.body,
-          tannin: wine.tannin,
-          sweetness: wine.sweetness,
-          acidity: wine.acidity,
-          image_url: wine.image_url
-        })
-        .select()
-        .single();
+      // Store wishlist wine data temporarily
+      learnedWineData = {
+        name: wine.name,
+        vintage: wine.vintage,
+        producer: wine.producer,
+        region: wine.region,
+        varietal: wine.varietal,
+        type: wine.wine_type,
+        body: wine.body,
+        tannin: wine.tannin,
+        sweetness: wine.sweetness,
+        acidity: wine.acidity,
+        image: wine.image_url,
+        wine_cache_id: wine.wine_cache_id,
+        wishlist_id: wishlistId
+      };
+      currentWineCacheId = wine.wine_cache_id;
       
-      if (error) {
-        alert('Error adding wine: ' + error.message);
-        return;
-      }
-      
-      currentWineId = data.id;
-      
-      await supabase.from('activities').insert({
-        user_id: currentUser.id,
-        wine_id: data.id,
-        activity_type: 'added',
-        wine_name: wine.name,
-        wine_vintage: wine.vintage
-      });
-      
-      // Delete from wishlist
-      await supabase.from('wishlist').delete().eq('id', wishlistId);
-      
+      // Show notes view
+      document.getElementById('notesWineName').textContent = wine.name;
+      document.getElementById('initialWineNotes').value = '';
       document.getElementById('wishlistDetailView').classList.add('hidden');
-      showSentimentPrompt();
+      document.getElementById('addNotesView').classList.remove('hidden');
     }
 
     async function deleteWishlistWine(id) {
@@ -3092,14 +3237,20 @@
     async function saveProfileSettings() {
       const displayName = document.getElementById('settingsDisplayName').value.trim();
       const bio = document.getElementById('settingsBio').value.trim();
+      const avatar = window.selectedAvatar || currentProfile.avatar_url || '🍷';
       
       await supabase
         .from('profiles')
-        .update({ display_name: displayName, bio })
+        .update({ 
+          display_name: displayName, 
+          bio,
+          avatar_url: avatar
+        })
         .eq('id', currentUser.id);
       
       currentProfile.display_name = displayName;
       currentProfile.bio = bio;
+      currentProfile.avatar_url = avatar;
       
       alert('Profile updated!');
       closeSettings();
