@@ -1,43 +1,2061 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Grapevine Edge Function Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Grapevine</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
-    button { padding: 12px 24px; background: #8B3A42; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 8px; }
-    button:hover { background: #6d2d33; }
-    pre { background: #f5f5f5; padding: 16px; border-radius: 8px; overflow-x: auto; }
-    .success { color: #28a745; }
-    .error { color: #dc3545; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      min-height: 100vh;
+      padding-bottom: 80px;
+      color: #1a1a1a;
+    }
+    .container { max-width: 500px; margin: 0 auto; }
+    .header {
+      background: #ffffff;
+      color: #8B3A42;
+      padding: 20px;
+      border-bottom: 1px solid #f0f0f0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-content { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .header h1 { font-size: 24px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .btn-primary { 
+      background: #8B3A42;
+      color: white;
+      border: 1px solid #8B3A42;
+    }
+    .btn-primary:hover { background: #722F37; border-color: #722F37; }
+    .btn-secondary { 
+      background: white;
+      color: #8B3A42;
+      border: 1px solid #e0e0e0;
+    }
+    .btn-secondary:hover { border-color: #8B3A42; background: #fafafa; }
+    .btn-danger { 
+      background: white;
+      color: #dc2626;
+      border: 1px solid #e0e0e0;
+    }
+    .btn-danger:hover { border-color: #dc2626; background: #fef2f2; }
+    .content { padding: 20px; }
+    .card { 
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #f0f0f0;
+      margin-bottom: 16px;
+    }
+    .wine-icon { font-size: 64px; text-align: center; margin-bottom: 20px; }
+    .text-center { text-align: center; }
+    h2 { font-size: 24px; margin-bottom: 8px; color: #1a1a1a; font-weight: 600; }
+    .subtitle { color: #666; margin-bottom: 24px; font-size: 15px; }
+    .wine-list { display: flex; flex-direction: column; gap: 12px; }
+    .wine-item {
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .wine-item:hover { 
+      border-color: #8B3A42;
+      box-shadow: 0 2px 8px rgba(139, 58, 66, 0.1);
+    }
+    .wine-item-image { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .wine-emoji {
+      font-size: 40px;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: #fafafa;
+      border-radius: 8px;
+    }
+    .wine-info { flex: 1; }
+    .wine-name { font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .wine-meta { font-size: 14px; color: #666; }
+    .rank-section { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
+    .rank-badge {
+      background: #8B3A42;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .rank-badge.unranked { background: #f0f0f0; color: #666; }
+    .hidden { display: none !important; }
+    .camera-container { position: relative; width: 100%; height: 500px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    .camera-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 3px dashed rgba(255, 255, 255, 0.8);
+      width: 70%;
+      height: 75%;
+      border-radius: 12px;
+      pointer-events: none;
+    }
+    .camera-hint {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+      max-width: 80%;
+      z-index: 10;
+    }
+    .camera-controls { position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 20px; z-index: 10; }
+    .capture-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: white;
+      border: 4px solid #8B3A42;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .capture-btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #8B3A42;
+    }
+    .flip-camera-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .processing { text-align: center; padding: 40px 20px; }
+    .spinner {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+    .wine-bottle {
+      width: 60px;
+      height: 80px;
+      background: #8B3A42;
+      border-radius: 5px 5px 15px 15px;
+      position: relative;
+      margin: 0 auto;
+      animation: tilt 2s ease-in-out infinite;
+    }
+    .wine-bottle::before {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 20px;
+      background: #722F37;
+      border-radius: 3px 3px 0 0;
+    }
+    .wine-pour {
+      position: absolute;
+      bottom: -40px;
+      left: 30px;
+      width: 4px;
+      height: 0;
+      background: linear-gradient(to bottom, #8B3A42, #722F37);
+      animation: pour 2s ease-in-out infinite;
+      border-radius: 0 0 2px 2px;
+    }
+    .wine-glass {
+      position: absolute;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 35px;
+      border: 3px solid #8B3A42;
+      border-top: none;
+      border-radius: 0 0 20px 20px;
+      overflow: hidden;
+    }
+    .wine-glass::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 0;
+      background: linear-gradient(to top, #8B3A42, rgba(139, 58, 66, 0.7));
+      animation: fill 2s ease-in-out infinite;
+    }
+    .wine-glass::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 15px;
+      background: #8B3A42;
+    }
+    @keyframes tilt {
+      0%, 100% { transform: rotate(-15deg); }
+      50% { transform: rotate(-25deg); }
+    }
+    @keyframes pour {
+      0%, 20% { height: 0; }
+      40%, 100% { height: 40px; }
+    }
+    @keyframes fill {
+      0%, 40% { height: 0; }
+      100% { height: 100%; }
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 500; margin-bottom: 8px; color: #1a1a1a; font-size: 14px; }
+    input, textarea { 
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      background: white;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #8B3A42; }
+    textarea { resize: vertical; min-height: 100px; }
+    .btn-group { display: flex; gap: 12px; margin-top: 24px; }
+    .settings-btn, .logout-btn {
+      background: none;
+      border: none;
+      color: #8B3A42;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+    .settings-btn:hover, .logout-btn:hover { background: #fafafa; }
+    .image-preview { width: 100%; border-radius: 12px; margin-bottom: 16px; border: 1px solid #f0f0f0; }
+    .image-placeholder {
+      text-align: center;
+      padding: 60px;
+      background: #fafafa;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #f0f0f0;
+    }
+    .image-placeholder .icon { font-size: 120px; }
+    .option-buttons { display: flex; gap: 12px; flex-direction: column; }
+    .help-text { font-size: 12px; color: #999; margin-top: 4px; }
+    .wine-type-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-right: 8px;
+    }
+    .type-red { background: #8B3A42; color: white; }
+    .type-white { background: #F4E4C1; color: #5D4E37; }
+    .type-rose { background: #FFB6C1; color: #8B3A62; }
+    .type-sparkling { background: #E6F3FF; color: #1E3A8A; }
+    .type-dessert { background: #DDA15E; color: white; }
+    .flavor-profile {
+      margin: 20px 0;
+      padding: 16px;
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #f0f0f0;
+    }
+    .flavor-profile h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      color: #1a1a1a;
+    }
+    .flavor-scale {
+      margin: 16px 0;
+    }
+    .flavor-scale-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .flavor-scale-bar {
+      height: 10px;
+      background: linear-gradient(to right, #e0e0e0, #8B3A42);
+      border-radius: 5px;
+      position: relative;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .flavor-scale-marker {
+      position: absolute;
+      top: -5px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border: 3px solid #8B3A42;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+    .flavor-scale-input {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .comparison-options { display: flex; gap: 12px; margin-bottom: 24px; }
+    .wine-comparison-card {
+      flex: 1;
+      background: white;
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    .wine-comparison-card:hover { 
+      transform: translateY(-4px);
+      border-color: #8B3A42;
+      box-shadow: 0 8px 20px rgba(139, 58, 66, 0.15);
+    }
+    .wine-comparison-card img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
+    .wine-comparison-card .wine-icon-large {
+      font-size: 64px;
+      margin-bottom: 12px;
+      padding: 20px;
+      background: #fafafa;
+      border-radius: 8px;
+    }
+    .wine-comparison-card h3 { font-size: 16px; margin-bottom: 4px; color: #1a1a1a; }
+    .wine-comparison-card .vintage { font-size: 14px; color: #666; }
+    .comparison-prompt { text-align: center; margin-bottom: 24px; color: #666; font-size: 18px; font-weight: 500; }
+    .type-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      color: white;
+      margin-bottom: 16px;
+    }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 0;
+      z-index: 1000;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      cursor: pointer;
+      color: #666;
+      background: none;
+      border: none;
+      transition: color 0.2s;
+    }
+    .nav-item:hover { color: #8B3A42; }
+    .nav-item.active { color: #8B3A42; }
+    .nav-item .icon { font-size: 24px; }
+    .nav-item .label { font-size: 11px; font-weight: 500; }
+    .nav-item.add-button .icon {
+      font-size: 32px;
+      background: #8B3A42;
+      color: white;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -28px;
+      box-shadow: 0 4px 12px rgba(139, 58, 66, 0.3);
+    }
+    .nav-item.add-button:hover .icon { background: #722F37; }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 500px;
+      padding: 24px;
+      animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .modal-title { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: #666;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    .modal-close:hover { background: #fafafa; }
+    .profile-header {
+      text-align: center;
+      padding: 24px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #8B3A42;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 32px;
+      margin: 0 auto 16px;
+    }
+    .profile-name { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+    .profile-username { font-size: 15px; color: #666; margin-bottom: 16px; }
+    .profile-stats {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 16px;
+    }
+    .stat-item { text-align: center; }
+    .stat-number { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+    .stat-label { font-size: 13px; color: #666; margin-top: 4px; }
+    .profile-tabs {
+      display: flex;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .profile-tab {
+      flex: 1;
+      padding: 16px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #666;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .profile-tab.active {
+      color: #8B3A42;
+      border-bottom-color: #8B3A42;
+    }
+    .data-source-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .badge-cached { background: #10b981; color: white; }
+    .badge-vivino { background: #a02949; color: white; }
+    .badge-openai { background: #8B3A42; color: white; }
+    .feed-post {
+      background: white;
+      border: 1px solid #f0f0f0;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .post-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #8B3A42;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .post-user-info { flex: 1; }
+    .post-username { font-weight: 600; color: #1a1a1a; font-size: 15px; }
+    .post-time { font-size: 13px; color: #999; }
+    .post-content { margin-top: 8px; }
+    .post-wine-name { font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .post-wine-meta { font-size: 14px; color: #666; }
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      border: 1px solid #f0f0f0;
+      width: 100%;
+      max-width: 400px;
+    }
+    .auth-logo {
+      font-size: 64px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .auth-title {
+      font-size: 28px;
+      font-weight: 600;
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    .auth-subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 32px;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: #fafafa;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 10px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-button.active {
+      background: white;
+      color: #8B3A42;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
-  <h1>🍷 Grapevine Edge Function Test</h1>
-  
-  <h2>Test 1: Text Search (works without OpenAI)</h2>
-  <button onclick="testTextSearch()">Test Text Search</button>
-  <pre id="textResult">Click button to test...</pre>
-  
-  <h2>Test 2: Check OpenAI Key</h2>
-  <button onclick="checkOpenAIKey()">Check OpenAI Key</button>
-  <pre id="keyResult">Click button to test...</pre>
-  
-  <h2>Test 3: Image Extraction (requires OpenAI)</h2>
-  <p>Take a photo of a wine label:</p>
-  <input type="file" id="imageInput" accept="image/*" capture="environment">
-  <button onclick="testImageExtraction()">Test Image Extraction</button>
-  <pre id="imageResult">Upload image and click button...</pre>
-  
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <div id="authContainer" class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">🍇</div>
+      <h1 class="auth-title">Grapevine</h1>
+      <p class="auth-subtitle">Discover, rank, and share your wine journey</p>
+      
+      <div class="tab-buttons">
+        <button class="tab-button active" onclick="showAuthTab('login')">Sign In</button>
+        <button class="tab-button" onclick="showAuthTab('signup')">Sign Up</button>
+      </div>
+
+      <div id="loginForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" onclick="handleLogin()">
+          <span>Sign In</span>
+        </button>
+      </div>
+
+      <div id="signupForm" class="hidden">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="signupUsername" placeholder="winelover">
+          <div class="help-text">Choose a unique username</div>
+        </div>
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="signupDisplayName" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="signupEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="signupPassword" placeholder="••••••••">
+          <div class="help-text">At least 6 characters</div>
+        </div>
+        <button class="btn btn-primary" onclick="handleSignup()">
+          <span>Create Account</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="appContainer" class="container hidden">
+    <div class="header">
+      <div class="header-content">
+        <h1><span>🍇</span><span>Grapevine</span></h1>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button class="settings-btn" onclick="showNotifications()" style="position: relative;">
+            🔔
+            <span id="notificationBadge" class="hidden" style="position: absolute; top: 0; right: 0; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 600;">0</span>
+          </button>
+          <button class="logout-btn" onclick="handleLogout()">🚪</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="feedView" class="content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0;">Feed</h2>
+        <button onclick="showDiscoverUsers()" style="padding: 8px 16px; background: #8B3A42; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+          👥 Discover
+        </button>
+      </div>
+      <div id="feedContent"></div>
+      <div id="feedEmpty" class="card text-center">
+        <div class="wine-icon">🍇</div>
+        <h2>Welcome to Grapevine!</h2>
+        <p class="subtitle">Start adding wines to see activity here</p>
+      </div>
+    </div>
+
+    <div id="discoverView" class="content hidden">
+      <h2 style="margin-bottom: 16px;">Discover Users</h2>
+      <div class="form-group">
+        <input type="text" id="userSearchInput" placeholder="Search by username..." oninput="searchUsers()" style="margin-bottom: 16px;">
+      </div>
+      <div id="discoverUsersList"></div>
+      <div style="height: 12px"></div>
+      <button class="btn btn-secondary" onclick="closeDiscoverUsers()">Back to Feed</button>
+    </div>
+
+    <div id="userProfileView" class="content hidden">
+      <div class="profile-header">
+        <div class="profile-avatar" id="viewProfileAvatar">JD</div>
+        <div class="profile-name" id="viewProfileDisplayName">Loading...</div>
+        <div class="profile-username" id="viewProfileUsername">@loading</div>
+        <div id="viewProfileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
+        <div id="followButtonContainer" style="margin-top: 12px;"></div>
+        <div class="profile-stats">
+          <div class="stat-item" style="cursor: pointer;" onclick="showViewProfileTab('collection')">
+            <div class="stat-number" id="viewProfileWineCount">0</div>
+            <div class="stat-label">Wines</div>
+          </div>
+          <div class="stat-item" style="cursor: pointer;" onclick="showFollowersList(currentViewedProfile, 'followers')">
+            <div class="stat-number" id="viewProfileFollowersCount">0</div>
+            <div class="stat-label">Followers</div>
+          </div>
+          <div class="stat-item" style="cursor: pointer;" onclick="showFollowersList(currentViewedProfile, 'following')">
+            <div class="stat-number" id="viewProfileFollowingCount">0</div>
+            <div class="stat-label">Following</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-tabs">
+        <button class="profile-tab active" onclick="showViewProfileTab('collection')">Collection</button>
+        <button class="profile-tab" onclick="showViewProfileTab('saved')">Saved</button>
+      </div>
+
+      <div id="viewProfileCollectionTab" style="padding: 20px;">
+        <div id="viewProfileWineList" class="wine-list"></div>
+        <div id="viewProfileEmptyState" class="card text-center hidden">
+          <div class="wine-icon">🍷</div>
+          <h2>No wines yet</h2>
+          <p class="subtitle">This user hasn't added any wines</p>
+        </div>
+      </div>
+
+      <div id="viewProfileSavedTab" class="hidden" style="padding: 20px;">
+        <div id="viewProfileWishlistList" class="wine-list"></div>
+        <div id="viewProfileWishlistEmptyState" class="card text-center hidden">
+          <div class="wine-icon">⭐</div>
+          <h2>No saved wines</h2>
+          <p class="subtitle">This user hasn't saved any wines yet</p>
+        </div>
+      </div>
+      
+      <div style="padding: 20px;">
+        <button class="btn btn-secondary" onclick="closeUserProfile()">Back</button>
+      </div>
+    </div>
+
+    <div id="followersModal" class="modal-overlay hidden" onclick="closeFollowersModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title" id="followersModalTitle">Followers</div>
+          <button class="modal-close" onclick="closeFollowersModal()">×</button>
+        </div>
+        <div id="followersModalList" class="wine-list"></div>
+      </div>
+    </div>
+
+    <div id="notificationsModal" class="modal-overlay hidden" onclick="closeNotificationsModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title">Notifications</div>
+          <button class="modal-close" onclick="closeNotificationsModal()">×</button>
+        </div>
+        <div id="notificationsList"></div>
+      </div>
+    </div>
+
+    <div id="profileView" class="content hidden">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">JD</div>
+        <div class="profile-name" id="profileDisplayName">Loading...</div>
+        <div class="profile-username" id="profileUsername">@loading</div>
+        <div id="profileBio" style="font-size: 14px; color: #666; margin-top: 8px; max-width: 300px; margin-left: auto; margin-right: auto;"></div>
+        <button onclick="editProfile()" style="margin-top: 12px; padding: 6px 16px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; color: #8B3A42; font-size: 14px; font-weight: 500; cursor: pointer;">Edit Profile</button>
+        <div class="profile-stats">
+          <div class="stat-item" onclick="showProfileTab('collection')" style="cursor: pointer;">
+            <div class="stat-number" id="profileWineCount">0</div>
+            <div class="stat-label">Wines</div>
+          </div>
+          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'followers')" style="cursor: pointer;">
+            <div class="stat-number" id="profileFollowersCount">0</div>
+            <div class="stat-label">Followers</div>
+          </div>
+          <div class="stat-item" onclick="showFollowersList(currentUser.id, 'following')" style="cursor: pointer;">
+            <div class="stat-number" id="profileFollowingCount">0</div>
+            <div class="stat-label">Following</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-tabs">
+        <button class="profile-tab active" onclick="showProfileTab('collection')">Collection</button>
+        <button class="profile-tab" onclick="showProfileTab('saved')">Saved</button>
+      </div>
+
+      <div id="profileCollectionTab" style="padding: 20px;">
+        <div id="profileWineList" class="wine-list"></div>
+        <div id="profileEmptyState" class="card text-center hidden">
+          <div class="wine-icon">🍷</div>
+          <h2>No wines yet</h2>
+          <p class="subtitle">Start scanning to build your collection!</p>
+        </div>
+      </div>
+
+      <div id="profileSavedTab" class="hidden" style="padding: 20px;">
+        <div id="profileWishlistList" class="wine-list"></div>
+        <div id="profileWishlistEmptyState" class="card text-center hidden">
+          <div class="wine-icon">⭐</div>
+          <h2>No saved wines yet</h2>
+          <p class="subtitle">Save wines you want to try later!</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="cameraView" class="content hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; padding: 0; z-index: 3000; background: #000;">
+      <div style="height: 100%; display: flex; flex-direction: column;">
+        <div style="padding: 20px; background: rgba(0,0,0,0.7); color: white;">
+          <h2 id="cameraTitle" style="color: white; margin-bottom: 4px;">Scan Wine Label</h2>
+          <p id="cameraSubtitle" style="color: rgba(255,255,255,0.8); margin-bottom: 0; font-size: 14px;">Center the label in the frame</p>
+        </div>
+        <div style="flex: 1; position: relative;">
+          <video id="video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+          <div class="camera-overlay"></div>
+          <div class="camera-hint" id="cameraHint">Position label vertically in frame</div>
+          <div class="camera-controls">
+            <button class="flip-camera-btn" onclick="flipCamera()">🔄</button>
+            <button class="capture-btn" onclick="capturePhoto()"></button>
+          </div>
+        </div>
+        <div style="padding: 20px; background: rgba(0,0,0,0.7);">
+          <button class="btn btn-secondary" onclick="closeCamera()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="processingView" class="content hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.95); z-index: 3000;">
+      <div class="card processing" style="max-width: 400px; width: 90%;">
+        <div class="spinner">
+          <div class="wine-bottle">
+            <div class="wine-pour"></div>
+          </div>
+          <div class="wine-glass"></div>
+        </div>
+        <h2>Processing...</h2>
+        <p class="subtitle" id="processingStatus">Please wait</p>
+      </div>
+    </div>
+
+    <div id="resultView" class="content hidden">
+      <div class="card">
+        <div id="imageContainer"></div>
+        <h2>Wine Details</h2>
+        <p class="subtitle">Edit any fields as needed</p>
+        <div class="form-group">
+          <label>Wine Name *</label>
+          <input type="text" id="wineName" placeholder="e.g., Château Margaux">
+        </div>
+        <div class="form-group">
+          <label>Vintage Year</label>
+          <input type="number" id="wineVintage" placeholder="e.g., 2018" min="1900" max="2025">
+        </div>
+        <div class="form-group">
+          <label>Producer / Winery</label>
+          <input type="text" id="wineProducer" placeholder="e.g., Château Margaux">
+        </div>
+        <div class="form-group">
+          <label>Region / Appellation</label>
+          <input type="text" id="wineRegion" placeholder="e.g., Bordeaux, France">
+        </div>
+        <div class="form-group">
+          <label>Varietal / Blend</label>
+          <input type="text" id="wineVarietal" placeholder="e.g., Cabernet Sauvignon">
+        </div>
+        <div class="form-group">
+          <label>Wine Type *</label>
+          <select id="wineType" onchange="toggleTanninField()" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
+            <option value="">Select type...</option>
+            <option value="red">🍷 Red Wine</option>
+            <option value="white">🥂 White Wine</option>
+            <option value="rose">🌸 Rosé Wine</option>
+            <option value="sparkling">🍾 Sparkling Wine</option>
+            <option value="dessert">🍯 Dessert Wine</option>
+          </select>
+        </div>
+        
+        <div class="flavor-profile">
+          <h3>Flavor Profile (Optional)</h3>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Light</span>
+              <span style="font-weight: 600;">Body</span>
+              <span>Bold</span>
+            </div>
+            <input type="range" id="bodySlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale" id="tanninScale">
+            <div class="flavor-scale-label">
+              <span>Smooth</span>
+              <span style="font-weight: 600;">Tannin</span>
+              <span>Tannic</span>
+            </div>
+            <input type="range" id="tanninSlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Dry</span>
+              <span style="font-weight: 600;">Sweetness</span>
+              <span>Sweet</span>
+            </div>
+            <input type="range" id="sweetnessSlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+          
+          <div class="flavor-scale">
+            <div class="flavor-scale-label">
+              <span>Soft</span>
+              <span style="font-weight: 600;">Acidity</span>
+              <span>Acidic</span>
+            </div>
+            <input type="range" id="aciditySlider" min="1" max="5" value="3" class="flavor-scale-input">
+          </div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveWine()" style="flex: 2">
+            <span>💾</span><span>Save to Collection</span>
+          </button>
+          <button class="btn btn-secondary" onclick="cancelAddWine()" style="flex: 1">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="learnResultView" class="content hidden">
+      <div class="card">
+        <div id="learnImageContainer"></div>
+        <h2 id="learnWineName">Wine Name</h2>
+        <div id="learnWineInfo"></div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveToWishlist()">
+            <span>⭐</span><span>Save for Later</span>
+          </button>
+          <button class="btn btn-secondary" onclick="addLearnedWineToCollection()">
+            <span>➕</span><span>Add to Collection</span>
+          </button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="closeAddModal()">Done</button>
+      </div>
+    </div>
+
+    <div id="menuResultView" class="content hidden">
+      <div class="card">
+        <h2>Wines on Menu</h2>
+        <p class="subtitle">Tap any wine to see details and prices</p>
+        <div id="menuWineList" class="wine-list"></div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="closeAddModal()">Done</button>
+      </div>
+    </div>
+
+    <div id="detailView" class="content hidden">
+      <div class="card" id="detailCard"></div>
+    </div>
+
+    <div id="wishlistDetailView" class="content hidden">
+      <div class="card" id="wishlistDetailCard"></div>
+    </div>
+
+    <div id="settingsView" class="content hidden">
+      <div class="card">
+        <h2>Settings</h2>
+        <p class="subtitle">App configuration</p>
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="settingsDisplayName" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>Bio</label>
+          <textarea id="settingsBio" placeholder="Tell us about your wine journey..."></textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveProfileSettings()">
+            <span>💾</span><span>Save Profile</span>
+          </button>
+          <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="sentimentView" class="content hidden">
+      <div class="card text-center">
+        <div class="wine-icon">🍷</div>
+        <h2 id="sentimentWineName">Wine Name</h2>
+        <p class="subtitle">How did you feel about this wine?</p>
+        <div class="option-buttons">
+          <button class="btn btn-primary" onclick="setSentiment('yes')" style="background: #10b981; border-color: #10b981;">
+            <span>😍</span><span>I Loved It</span>
+          </button>
+          <button class="btn btn-secondary" onclick="setSentiment('ok')">
+            <span>😊</span><span>It Was OK</span>
+          </button>
+          <button class="btn btn-secondary" onclick="setSentiment('no')" style="border-color: #dc2626; color: #dc2626;">
+            <span>😐</span><span>Didn't Like It</span>
+          </button>
+        </div>
+        <div style="margin-top: 24px;">
+          <button class="btn btn-secondary" onclick="skipRanking()">Skip Ranking</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="comparisonView" class="content hidden">
+      <div class="card">
+        <h2>Rank Your Wine</h2>
+        <p class="comparison-prompt">Which wine did you prefer?</p>
+        <div class="comparison-options" id="comparisonOptions"></div>
+        <button class="btn btn-secondary" onclick="finishRanking()">Done Ranking</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-item active" onclick="showTab('feed')">
+        <div class="icon">🌐</div>
+        <div class="label">Feed</div>
+      </button>
+      <button class="nav-item add-button" onclick="showAddModal()">
+        <div class="icon">+</div>
+      </button>
+      <button class="nav-item" onclick="showTab('profile')">
+        <div class="icon">👤</div>
+        <div class="label">Profile</div>
+      </button>
+    </div>
+  </div>
+
+  <div id="addModal" class="modal-overlay hidden" onclick="closeAddModalIfOverlay(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">Add Wine</div>
+        <button class="modal-close" onclick="closeAddModal()">×</button>
+      </div>
+      <div class="option-buttons">
+        <button class="btn btn-primary" onclick="startCamera('add')">
+          <span>📷</span><span>Scan & Add to Collection</span>
+        </button>
+        <button class="btn btn-secondary" onclick="startCamera('learn')">
+          <span>🔍</span><span>Learn About a Wine</span>
+        </button>
+        <button class="btn btn-secondary" onclick="startCamera('menu')">
+          <span>🍽️</span><span>Scan Restaurant Menu</span>
+        </button>
+        <button class="btn btn-secondary" onclick="startManualEntry()">
+          <span>✍️</span><span>Enter Manually</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://nzhjtwnpznqaehwegwvs.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aGp0d25wem5xYWVod2Vnd3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NTEwMDIsImV4cCI6MjA4MDUyNzAwMn0.U5LNTTBuiX_seQewL8kOKno-XNCdRZcPOgFkHGpox_A';
+    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    async function testTextSearch() {
-      const result = document.getElementById('textResult');
-      result.textContent = 'Testing...';
+    let currentUser = null;
+    let currentProfile = null;
+    let currentViewedProfile = null;
+    let stream = null;
+    let facingMode = 'environment';
+    let currentImageData = null;
+    let currentImageUrl = null;
+    let currentMode = 'add';
+    let learnedWineData = null;
+    let menuWines = [];
+    let currentTab = 'feed';
+    let currentWineId = null;
+    let currentComparison = null;
+    let currentWineCacheId = null;
+    let autoCaptureTimer = null;
+
+    // AUTH FUNCTIONS
+    function showAuthTab(tab) {
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
       
+      if (tab === 'login') {
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+      } else {
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('signupForm').classList.remove('hidden');
+      }
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!email || !password) {
+        alert('Please enter email and password');
+        return;
+      }
+      
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        alert('Login failed: ' + error.message);
+      } else {
+        await initializeApp();
+      }
+    }
+
+    async function handleSignup() {
+      const username = document.getElementById('signupUsername').value.trim();
+      const displayName = document.getElementById('signupDisplayName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      
+      if (!username || !email || !password) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username, display_name: displayName || username },
+          emailRedirectTo: 'https://kinghans.github.io/wine-scanner/'
+        }
+      });
+      
+      if (error) {
+        alert('Signup failed: ' + error.message);
+      } else {
+        alert('Account created! You can now sign in.');
+        // Auto-switch to login tab
+        document.getElementById('signupForm').classList.add('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.querySelectorAll('.tab-button')[0].classList.add('active');
+        document.querySelectorAll('.tab-button')[1].classList.remove('active');
+        // Pre-fill email
+        document.getElementById('loginEmail').value = email;
+      }
+    }
+
+    async function handleLogout() {
+      if (confirm('Sign out?')) {
+        await supabase.auth.signOut();
+        location.reload();
+      }
+    }
+
+    async function initializeApp() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        document.getElementById('authContainer').classList.remove('hidden');
+        document.getElementById('appContainer').classList.add('hidden');
+        return;
+      }
+      
+      currentUser = user;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      currentProfile = profile;
+      
+      document.getElementById('authContainer').classList.add('hidden');
+      document.getElementById('appContainer').classList.remove('hidden');
+      
+      await loadUserData();
+      showTab('feed');
+    }
+
+    async function loadUserData() {
+      if (!currentProfile) return;
+      
+      document.getElementById('profileAvatar').textContent = currentProfile.username?.substring(0, 2).toUpperCase() || 'WL';
+      document.getElementById('profileDisplayName').textContent = currentProfile.display_name || currentProfile.username;
+      document.getElementById('profileUsername').textContent = '@' + currentProfile.username;
+      document.getElementById('profileBio').textContent = currentProfile.bio || 'Add a bio...';
+      document.getElementById('profileBio').style.color = currentProfile.bio ? '#666' : '#999';
+      document.getElementById('profileBio').style.fontStyle = currentProfile.bio ? 'normal' : 'italic';
+      
+      const { data: stats } = await supabase.rpc('get_user_stats', { user_uuid: currentUser.id });
+      if (stats && stats.length > 0) {
+        document.getElementById('profileWineCount').textContent = stats[0].wines_count || 0;
+        document.getElementById('profileFollowersCount').textContent = stats[0].followers_count || 0;
+        document.getElementById('profileFollowingCount').textContent = stats[0].following_count || 0;
+      }
+      
+      await loadFeed();
+      await loadNotifications();
+    }
+
+    function editProfile() {
+      if (!currentProfile) return;
+      
+      document.getElementById('settingsDisplayName').value = currentProfile.display_name || '';
+      document.getElementById('settingsBio').value = currentProfile.bio || '';
+      
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('settingsView').classList.remove('hidden');
+    }
+
+    async function loadFeed() {
+      // Load feed from followed users, or all activities if not following anyone
+      const { data: followingCount } = await supabase
+        .from('follows')
+        .select('following_id', { count: 'exact', head: true })
+        .eq('follower_id', currentUser.id);
+      
+      let activities;
+      
+      if (followingCount && followingCount > 0) {
+        // Show activities from followed users
+        const { data } = await supabase.rpc('get_feed', { 
+          user_uuid: currentUser.id,
+          limit_count: 50
+        });
+        activities = data;
+      } else {
+        // Show all activities if not following anyone
+        const { data } = await supabase
+          .from('activities')
+          .select(`
+            *,
+            profiles!activities_user_id_fkey (
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        activities = data;
+      }
+      
+      const feedContent = document.getElementById('feedContent');
+      const feedEmpty = document.getElementById('feedEmpty');
+      
+      if (!activities || activities.length === 0) {
+        feedContent.innerHTML = '';
+        feedEmpty.classList.remove('hidden');
+        return;
+      }
+      
+      feedEmpty.classList.add('hidden');
+      
+      feedContent.innerHTML = activities.map(act => {
+        const profile = act.profiles || act;
+        const timeAgo = getTimeAgo(new Date(act.created_at));
+        const sentimentEmoji = act.sentiment === 'yes' ? '😍' : act.sentiment === 'ok' ? '😊' : act.sentiment === 'no' ? '😐' : '';
+        
+        return `
+          <div class="feed-post" style="cursor: pointer;" onclick="viewUserProfile('${act.user_id}')">
+            <div class="post-header">
+              <div class="post-avatar">${(profile.username || act.username)?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="post-user-info">
+                <div class="post-username">${profile.display_name || act.display_name || profile.username || act.username || 'User'}</div>
+                <div class="post-time">${timeAgo}</div>
+              </div>
+            </div>
+            <div class="post-content">
+              <div class="post-wine-name">${sentimentEmoji} ${act.wine_name || 'Unknown Wine'}</div>
+              <div class="post-wine-meta">
+                ${act.wine_vintage ? act.wine_vintage + ' • ' : ''}
+                ${act.score ? '⭐ ' + act.score.toFixed(1) : ''}
+                ${act.activity_type === 'added' ? 'Added to collection' : act.activity_type === 'rated' ? 'Rated' : 'Reviewed'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // DISCOVER USERS
+    function showDiscoverUsers() {
+      document.getElementById('feedView').classList.add('hidden');
+      document.getElementById('discoverView').classList.remove('hidden');
+      loadAllUsers();
+    }
+
+    function closeDiscoverUsers() {
+      document.getElementById('discoverView').classList.add('hidden');
+      showTab('feed');
+    }
+
+    async function loadAllUsers() {
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!users || users.length === 0) {
+        document.getElementById('discoverUsersList').innerHTML = '<div class="card text-center"><p class="subtitle">No other users yet</p></div>';
+        return;
+      }
+      
+      displayUsersList(users);
+    }
+
+    async function searchUsers() {
+      const query = document.getElementById('userSearchInput').value.trim().toLowerCase();
+      
+      if (!query) {
+        loadAllUsers();
+        return;
+      }
+      
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', currentUser.id)
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .limit(50);
+      
+      if (!users || users.length === 0) {
+        document.getElementById('discoverUsersList').innerHTML = '<div class="card text-center"><p class="subtitle">No users found</p></div>';
+        return;
+      }
+      
+      displayUsersList(users);
+    }
+
+    async function displayUsersList(users) {
+      // Get follow statuses for all users
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUser.id);
+      
+      const followingIds = new Set(follows?.map(f => f.following_id) || []);
+      
+      const list = document.getElementById('discoverUsersList');
+      list.innerHTML = '<div class="wine-list">' + users.map(user => {
+        const isFollowing = followingIds.has(user.id);
+        
+        return `
+          <div class="wine-item">
+            <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+            <div class="wine-info" style="cursor: pointer;" onclick="viewUserProfile('${user.id}')">
+              <div class="wine-name">${user.display_name || user.username}</div>
+              <div class="wine-meta">@${user.username}</div>
+              ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
+            </div>
+            <button 
+              onclick="event.stopPropagation(); toggleFollow('${user.id}')" 
+              id="followBtn-${user.id}"
+              style="padding: 8px 16px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
+              ${isFollowing ? 'Following' : 'Follow'}
+            </button>
+          </div>
+        `;
+      }).join('') + '</div>';
+    }
+
+    // FOLLOW/UNFOLLOW
+    async function toggleFollow(userId) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      if (existing) {
+        // Unfollow - show confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
+        
+        const btn = document.getElementById(`followBtn-${userId}`);
+        if (btn) {
+          btn.textContent = 'Follow';
+          btn.style.background = '#8B3A42';
+          btn.style.color = 'white';
+          btn.style.borderColor = '#8B3A42';
+        }
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+        
+        const btn = document.getElementById(`followBtn-${userId}`);
+        if (btn) {
+          btn.textContent = 'Following';
+          btn.style.background = 'white';
+          btn.style.color = '#8B3A42';
+          btn.style.borderColor = '#e0e0e0';
+        }
+      }
+      
+      // Reload feed to update with new follows
+      await loadFeed();
+    }
+
+    // NOTIFICATIONS
+    async function loadNotifications() {
+      const { data: notifications, error } = await supabase
+        .from('notifications')
+        .select(`
+          *,
+          profiles!notifications_from_user_id_fkey(username, display_name)
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error loading notifications:', error);
+        return 0;
+      }
+      
+      const unreadCount = notifications?.filter(n => !n.read).length || 0;
+      
+      const badge = document.getElementById('notificationBadge');
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      
+      return unreadCount;
+    }
+
+    async function showNotifications() {
+      const { data: notifications } = await supabase
+        .from('notifications')
+        .select(`
+          *,
+          profiles!notifications_from_user_id_fkey(username, display_name)
+        `)
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!notifications || notifications.length === 0) {
+        document.getElementById('notificationsList').innerHTML = '<div class="card text-center"><p class="subtitle">No notifications yet</p></div>';
+      } else {
+        document.getElementById('notificationsList').innerHTML = '<div class="wine-list">' + notifications.map(notif => {
+          const timeAgo = getTimeAgo(new Date(notif.created_at));
+          const profile = notif.profiles;
+          
+          return `
+            <div class="wine-item" style="background: ${notif.read ? 'white' : '#fef9f9'}; cursor: pointer;" onclick="handleNotificationClick('${notif.id}', '${notif.from_user_id}')">
+              <div class="post-avatar" style="flex-shrink: 0;">${profile?.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="wine-info">
+                <div class="wine-name">${notif.message}</div>
+                <div class="wine-meta">${timeAgo}</div>
+              </div>
+              ${!notif.read ? '<div style="width: 8px; height: 8px; background: #8B3A42; border-radius: 50%; flex-shrink: 0;"></div>' : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+      
+      // Mark all as read
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', currentUser.id);
+      
+      document.getElementById('notificationBadge').classList.add('hidden');
+      document.getElementById('notificationsModal').classList.remove('hidden');
+    }
+
+    async function handleNotificationClick(notifId, fromUserId) {
+      closeNotificationsModal();
+      viewUserProfile(fromUserId);
+    }
+
+    function closeNotificationsModal(event) {
+      if (event && !event.target.classList.contains('modal-overlay')) return;
+      document.getElementById('notificationsModal').classList.add('hidden');
+    }
+
+    // VIEW USER PROFILE
+    async function viewUserProfile(userId) {
+      currentViewedProfile = userId;
+      
+      // Hide all other views
+      document.getElementById('feedView').classList.add('hidden');
+      document.getElementById('discoverView').classList.add('hidden');
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('userProfileView').classList.remove('hidden');
+      
+      // Load profile data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (!profile) return;
+      
+      // Update profile display
+      document.getElementById('viewProfileAvatar').textContent = profile.username?.substring(0, 2).toUpperCase() || 'U';
+      document.getElementById('viewProfileDisplayName').textContent = profile.display_name || profile.username;
+      document.getElementById('viewProfileUsername').textContent = '@' + profile.username;
+      document.getElementById('viewProfileBio').textContent = profile.bio || '';
+      document.getElementById('viewProfileBio').style.display = profile.bio ? 'block' : 'none';
+      
+      // Load stats
+      const { data: stats } = await supabase.rpc('get_user_stats', { user_uuid: userId });
+      if (stats && stats.length > 0) {
+        document.getElementById('viewProfileWineCount').textContent = stats[0].wines_count || 0;
+        document.getElementById('viewProfileFollowersCount').textContent = stats[0].followers_count || 0;
+        document.getElementById('viewProfileFollowingCount').textContent = stats[0].following_count || 0;
+      }
+      
+      // Check follow status and show button
+      const { data: followStatus } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      const isFollowing = !!followStatus;
+      
+      document.getElementById('followButtonContainer').innerHTML = `
+        <button 
+          onclick="toggleFollowOnProfile('${userId}')" 
+          id="profileFollowBtn"
+          style="padding: 10px 24px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer;">
+          ${isFollowing ? 'Following' : 'Follow'}
+        </button>
+      `;
+      
+      // Load wines
+      showViewProfileTab('collection');
+    }
+
+    async function toggleFollowOnProfile(userId) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      const btn = document.getElementById('profileFollowBtn');
+      
+      if (existing) {
+        // Unfollow - show confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
+        
+        btn.textContent = 'Follow';
+        btn.style.background = '#8B3A42';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#8B3A42';
+        
+        // Update follower count
+        const currentCount = parseInt(document.getElementById('viewProfileFollowersCount').textContent);
+        document.getElementById('viewProfileFollowersCount').textContent = Math.max(0, currentCount - 1);
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+        
+        btn.textContent = 'Following';
+        btn.style.background = 'white';
+        btn.style.color = '#8B3A42';
+        btn.style.borderColor = '#e0e0e0';
+        
+        // Update follower count
+        const currentCount = parseInt(document.getElementById('viewProfileFollowersCount').textContent);
+        document.getElementById('viewProfileFollowersCount').textContent = currentCount + 1;
+      }
+    }
+
+    async function showViewProfileTab(tab) {
+      // Update active tab button
+      const tabs = document.querySelectorAll('#userProfileView .profile-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      
+      if (tab === 'collection') {
+        tabs[0]?.classList.add('active');
+        document.getElementById('viewProfileCollectionTab').classList.remove('hidden');
+        document.getElementById('viewProfileSavedTab').classList.add('hidden');
+        
+        const { data: wines } = await supabase
+          .from('wines')
+          .select('*')
+          .eq('user_id', currentViewedProfile)
+          .order('score', { ascending: false, nullsFirst: false });
+        
+        const list = document.getElementById('viewProfileWineList');
+        const empty = document.getElementById('viewProfileEmptyState');
+        
+        if (!wines || wines.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wines.map(w => `
+            <div class="wine-item" onclick="showOtherUserWineDetail('${w.id}')">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">🍷</div>'}
+              <div class="wine-info">
+                <div class="wine-name">${w.name}</div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
+                <div class="rank-section">
+                  <span class="rank-badge ${!w.score ? 'unranked' : ''}">${w.score ? w.score.toFixed(1) : 'Unranked'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } else if (tab === 'saved') {
+        tabs[1]?.classList.add('active');
+        document.getElementById('viewProfileCollectionTab').classList.add('hidden');
+        document.getElementById('viewProfileSavedTab').classList.remove('hidden');
+        
+        const { data: wishlist } = await supabase
+          .from('wishlist')
+          .select('*')
+          .eq('user_id', currentViewedProfile)
+          .order('created_at', { ascending: false });
+        
+        const list = document.getElementById('viewProfileWishlistList');
+        const empty = document.getElementById('viewProfileWishlistEmptyState');
+        
+        if (!wishlist || wishlist.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wishlist.map(w => `
+            <div class="wine-item" onclick="showOtherUserWishlistDetail('${w.id}')">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">⭐</div>'}
+              <div class="wine-info">
+                <div class="wine-name">${w.name}</div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || 'Unknown'}</div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function showViewProfileWines() {
+      const collectionTab = document.querySelector('#userProfileView .profile-tab');
+      collectionTab.click();
+    }
+
+    async function showOtherUserWineDetail(id) {
+      const { data: wine } = await supabase
+        .from('wines')
+        .select('*, profiles!wines_user_id_fkey(username, display_name)')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      const sent = {'yes': '😍 Loved It', 'ok': '😊 It Was OK', 'no': '😐 Didn\'t Like It'};
+      const profile = wine.profiles;
+      
+      document.getElementById('userProfileView').classList.add('hidden');
+      document.getElementById('detailView').classList.remove('hidden');
+      
+      document.getElementById('detailCard').innerHTML = `
+        <div style="text-align: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-size: 14px; color: #666;">
+            From <strong>${profile.display_name || profile.username}</strong>'s collection
+          </div>
+        </div>
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        <div class="form-group">
+          <label>Their Rating</label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="rank-badge ${!wine.score ? 'unranked' : ''}" style="font-size: 24px;">${wine.score ? wine.score.toFixed(1) : 'Not ranked'}</span>
+            ${wine.sentiment ? `<span style="font-size: 18px;">${sent[wine.sentiment]}</span>` : ''}
+          </div>
+          ${wine.comparisons ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+        </div>
+        ${wine.notes ? `<div class="form-group"><label>Their Notes</label><div style="background: #fafafa; padding: 12px; border-radius: 8px; color: #1a1a1a;">${wine.notes}</div></div>` : ''}
+        <button class="btn btn-secondary" onclick="backToUserProfile()">Back to Profile</button>
+      `;
+    }
+
+    async function showOtherUserWishlistDetail(id) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*, profiles!wishlist_user_id_fkey(username, display_name)')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      const profile = wine.profiles;
+      
+      document.getElementById('userProfileView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.remove('hidden');
+      
+      document.getElementById('wishlistDetailCard').innerHTML = `
+        <div style="text-align: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0;">
+          <div style="font-size: 14px; color: #666;">
+            From <strong>${profile.display_name || profile.username}</strong>'s saved wines
+          </div>
+        </div>
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="type-badge" style="background: #8B3A42;">${wine.wine_type} Wine</span></div>` : ''}
+        ${wine.description ? `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${wine.description}</div></div>` : ''}
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        ${wine.tasting_notes ? `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${wine.tasting_notes}</div></div>` : ''}
+        ${wine.food_pairings ? `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${wine.food_pairings}</div></div>` : ''}
+        ${wine.price ? `<div class="form-group"><label>Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
+        <button class="btn btn-secondary" onclick="backToUserProfile()">Back to Profile</button>
+      `;
+    }
+
+    function backToUserProfile() {
+      document.getElementById('detailView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.add('hidden');
+      document.getElementById('userProfileView').classList.remove('hidden');
+    }
+
+    // FOLLOWERS/FOLLOWING LISTS
+    async function showFollowersList(userId, type) {
+      document.getElementById('followersModalTitle').textContent = type === 'followers' ? 'Followers' : 'Following';
+      
+      let query;
+      if (type === 'followers') {
+        query = supabase
+          .from('follows')
+          .select('follower_id, profiles!follows_follower_id_fkey(id, username, display_name, bio)')
+          .eq('following_id', userId);
+      } else {
+        query = supabase
+          .from('follows')
+          .select('following_id, profiles!follows_following_id_fkey(id, username, display_name, bio)')
+          .eq('follower_id', userId);
+      }
+      
+      const { data } = await query;
+      
+      if (!data || data.length === 0) {
+        document.getElementById('followersModalList').innerHTML = '<div class="card text-center"><p class="subtitle">No ' + type + ' yet</p></div>';
+      } else {
+        const users = data.map(d => d.profiles);
+        
+        // Get follow statuses
+        const { data: follows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+        
+        const followingIds = new Set(follows?.map(f => f.following_id) || []);
+        
+        document.getElementById('followersModalList').innerHTML = users.map(user => {
+          const isFollowing = followingIds.has(user.id);
+          const isCurrentUser = user.id === currentUser.id;
+          
+          return `
+            <div class="wine-item">
+              <div class="post-avatar" style="flex-shrink: 0;">${user.username?.substring(0, 2).toUpperCase() || 'U'}</div>
+              <div class="wine-info" style="cursor: pointer;" onclick="closeFollowersModal(); viewUserProfile('${user.id}')">
+                <div class="wine-name">${user.display_name || user.username}</div>
+                <div class="wine-meta">@${user.username}</div>
+                ${user.bio ? `<div class="wine-meta" style="color: #999; margin-top: 4px;">${user.bio}</div>` : ''}
+              </div>
+              ${!isCurrentUser ? `
+                <button 
+                  onclick="event.stopPropagation(); toggleFollowInModal('${user.id}', '${userId}', '${type}')" 
+                  id="followBtn-${user.id}"
+                  style="padding: 8px 16px; background: ${isFollowing ? 'white' : '#8B3A42'}; color: ${isFollowing ? '#8B3A42' : 'white'}; border: 1px solid ${isFollowing ? '#e0e0e0' : '#8B3A42'}; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; flex-shrink: 0;">
+                  ${isFollowing ? 'Following' : 'Follow'}
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+      
+      document.getElementById('followersModal').classList.remove('hidden');
+    }
+
+    async function toggleFollowInModal(userId, listOwnerId, type) {
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', currentUser.id)
+        .eq('following_id', userId)
+        .single();
+      
+      if (existing) {
+        // Unfollow with confirmation
+        if (!confirm('Unfollow this user?')) return;
+        
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', userId);
+        
+        // Delete the follow notification
+        await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', userId)
+          .eq('from_user_id', currentUser.id)
+          .eq('type', 'follow');
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: currentUser.id,
+            following_id: userId
+          });
+        
+        // Create notification
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            from_user_id: currentUser.id,
+            type: 'follow',
+            message: `${currentProfile.display_name || currentProfile.username} started following you`
+          });
+      }
+      
+      // Refresh the modal
+      await showFollowersList(listOwnerId, type);
+      
+      // Update stats if viewing own profile
+      if (listOwnerId === currentUser.id) {
+        await loadUserData();
+      }
+      
+      // Reload feed
+      await loadFeed();
+    }
+
+    function closeFollowersModal(event) {
+      if (event && !event.target.classList.contains('modal-overlay')) return;
+      document.getElementById('followersModal').classList.add('hidden');
+    }
+
+    function closeUserProfile() {
+      document.getElementById('userProfileView').classList.add('hidden');
+      
+      // Return to wherever we came from
+      if (document.getElementById('discoverView').classList.contains('hidden')) {
+        showTab('feed');
+      } else {
+        document.getElementById('discoverView').classList.remove('hidden');
+      }
+    }
+
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm ago';
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + 'h ago';
+      const days = Math.floor(hours / 24);
+      return days + 'd ago';
+    }
+
+    // WINE SEARCH & CACHE
+    function generateCacheKey(name, vintage) {
+      return `${name} ${vintage}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+    
+    async function checkWineCache(name, vintage) {
+      const cacheKey = generateCacheKey(name, vintage);
+      
+      const { data } = await supabase
+        .from('wine_cache')
+        .select('*')
+        .eq('cache_key', cacheKey)
+        .single();
+      
+      if (data) {
+        await supabase
+          .from('wine_cache')
+          .update({ scan_count: data.scan_count + 1 })
+          .eq('id', data.id);
+        
+        console.log('✅ CACHE HIT:', name, vintage);
+        currentWineCacheId = data.id;
+        return { ...data, source: 'cached' };
+      }
+      
+      console.log('❌ CACHE MISS:', name, vintage);
+      return null;
+    }
+    
+    async function saveToWineCache(name, vintage, wineData) {
+      const cacheKey = generateCacheKey(name, vintage);
+      
+      const { data } = await supabase
+        .from('wine_cache')
+        .insert({
+          cache_key: cacheKey,
+          name: wineData.name,
+          vintage: wineData.vintage,
+          producer: wineData.producer,
+          region: wineData.region,
+          varietal: wineData.varietal,
+          wine_type: wineData.type,
+          rating: wineData.rating,
+          ratings_count: wineData.ratings_count,
+          price: wineData.price,
+          description: wineData.description,
+          tasting_notes: wineData.tasting_notes || wineData.tastingNotes,
+          food_pairings: wineData.food_pairings || wineData.foodPairings,
+          body: wineData.body,
+          tannin: wineData.tannin,
+          sweetness: wineData.sweetness,
+          acidity: wineData.acidity,
+          data_source: wineData.source,
+          first_scanned_by: currentUser.id
+        })
+        .select()
+        .single();
+      
+      if (data) {
+        console.log('💾 CACHED:', name, vintage);
+        currentWineCacheId = data.id;
+        return data;
+      }
+      
+      return null;
+    }
+    
+    async function hybridWineSearch(wineName, vintage) {
+      console.log('🔍 Hybrid search:', wineName, vintage);
+      
+      // TIER 1: Cache
+      const cached = await checkWineCache(wineName, vintage);
+      if (cached) return cached;
+      
+      // TIER 2: Vivino
+      try {
+        const vivinoData = await searchVivino(wineName, vintage);
+        if (vivinoData) {
+          vivinoData.source = 'vivino';
+          await saveToWineCache(wineName, vintage, vivinoData);
+          return vivinoData;
+        }
+      } catch (err) {
+        console.log('Vivino failed:', err);
+      }
+      
+      // TIER 3: OpenAI via Edge Function
       try {
         const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
           method: 'POST',
@@ -45,71 +2063,365 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
           },
-          body: JSON.stringify({ 
-            wineName: 'Caymus Cabernet Sauvignon',
-            vintage: '2020'
-          })
+          body: JSON.stringify({ wineName, vintage })
         });
         
-        const data = await response.json();
-        result.className = 'success';
-        result.textContent = 'SUCCESS!\n\n' + JSON.stringify(data, null, 2);
+        const wineData = await response.json();
+        
+        if (wineData && wineData.name) {
+          wineData.source = 'openai';
+          await saveToWineCache(wineName, vintage, wineData);
+          return wineData;
+        }
       } catch (err) {
-        result.className = 'error';
-        result.textContent = 'ERROR: ' + err.message;
+        console.log('OpenAI failed:', err);
       }
+      
+      return null;
     }
     
-    async function checkOpenAIKey() {
-      const result = document.getElementById('keyResult');
-      result.textContent = 'Checking...';
+    async function searchVivino(wineName, vintage) {
+      const query = encodeURIComponent(`${wineName} ${vintage}`.trim());
+      const response = await fetch(`https://www.vivino.com/api/explore/explore?q=${query}&country_code=US`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      const matches = data?.explore_vintage?.matches || [];
+      if (matches.length === 0) return null;
+      
+      const wine = matches[0].vintage;
+      return {
+        name: wine.wine.name,
+        vintage: wine.year?.toString() || '',
+        producer: wine.wine.winery?.name || '',
+        region: wine.wine.region?.name || '',
+        varietal: wine.wine.grapes?.map(g => g.name).join(', ') || '',
+        type: wine.wine.type_id === 1 ? 'Red' : wine.wine.type_id === 2 ? 'White' : 'Wine',
+        rating: wine.statistics?.ratings_average || 0,
+        ratings_count: wine.statistics?.ratings_count || 0,
+        price: wine.price?.amount ? `$${wine.price.amount}` : '',
+        description: wine.wine.description || '',
+        tastingNotes: '',
+        foodPairings: ''
+      };
+    }
+
+    // IMAGE UPLOAD TO SUPABASE STORAGE
+    async function uploadWineImage(imageData) {
+      if (!imageData) return null;
       
       try {
-        const { data, error } = await supabase
-          .from('app_config')
-          .select('value')
-          .eq('key', 'openai_api_key')
-          .single();
+        // Convert base64 to blob
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        
+        // Generate unique filename
+        const filename = `${currentUser.id}/${Date.now()}.jpg`;
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('wine-images')
+          .upload(filename, blob, {
+            contentType: 'image/jpeg',
+            upsert: false
+          });
         
         if (error) throw error;
         
-        if (data && data.value) {
-          result.className = 'success';
-          result.textContent = 'SUCCESS! OpenAI key is configured.\n\nKey: ' + data.value.substring(0, 20) + '...';
-        } else {
-          result.className = 'error';
-          result.textContent = 'ERROR: OpenAI key not found in database';
-        }
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('wine-images')
+          .getPublicUrl(filename);
+        
+        return urlData.publicUrl;
       } catch (err) {
-        result.className = 'error';
-        result.textContent = 'ERROR: ' + err.message;
+        console.error('Image upload failed:', err);
+        return null;
       }
     }
-    
-    async function testImageExtraction() {
-      const result = document.getElementById('imageResult');
-      const input = document.getElementById('imageInput');
+
+    // APP NAVIGATION
+    function showTab(tab) {
+      currentTab = tab;
+      ['feedView', 'discoverView', 'userProfileView', 'profileView', 'cameraView', 'processingView', 'resultView', 'learnResultView', 'menuResultView', 'detailView', 'wishlistDetailView', 'settingsView', 'sentimentView', 'comparisonView'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
       
-      if (!input.files || !input.files[0]) {
-        result.className = 'error';
-        result.textContent = 'ERROR: Please select an image first';
-        return;
+      if (tab === 'feed') {
+        document.getElementById('feedView').classList.remove('hidden');
+        document.querySelectorAll('.nav-item')[0].classList.add('active');
+        loadFeed();
+      } else if (tab === 'profile') {
+        showProfile();
+        document.querySelectorAll('.nav-item')[2].classList.add('active');
+      }
+    }
+
+    async function showProfile() {
+      document.getElementById('profileView').classList.remove('hidden');
+      await loadUserData();
+      showProfileTab('collection');
+    }
+
+    async function showProfileTab(tab) {
+      const tabs = document.querySelectorAll('#profileView .profile-tab');
+      tabs.forEach(btn => btn.classList.remove('active'));
+      
+      if (tab === 'collection') {
+        tabs[0]?.classList.add('active'); // Activate Collection tab button
+        document.getElementById('profileCollectionTab').classList.remove('hidden');
+        document.getElementById('profileSavedTab').classList.add('hidden');
+        
+        const { data: wines } = await supabase
+          .from('wines')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('score', { ascending: false, nullsFirst: false });
+        
+        const list = document.getElementById('profileWineList');
+        const empty = document.getElementById('profileEmptyState');
+        
+        if (!wines || wines.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wines.map(w => `
+            <div class="wine-item" onclick="showDetail('${w.id}')">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">🍷</div>'}
+              <div class="wine-info">
+                <div class="wine-name">
+                  ${w.wine_type ? `<span class="wine-type-badge type-${w.wine_type}">${w.wine_type}</span>` : ''}
+                  ${w.name}
+                </div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || w.producer || 'Unknown'}</div>
+                <div class="rank-section">
+                  <span class="rank-badge ${!w.score ? 'unranked' : ''}">${w.score ? w.score.toFixed(1) : 'Unranked'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } else if (tab === 'saved') {
+        tabs[1]?.classList.add('active'); // Activate Saved tab button
+        document.getElementById('profileCollectionTab').classList.add('hidden');
+        document.getElementById('profileSavedTab').classList.remove('hidden');
+        
+        const { data: wishlist } = await supabase
+          .from('wishlist')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+        
+        const list = document.getElementById('profileWishlistList');
+        const empty = document.getElementById('profileWishlistEmptyState');
+        
+        if (!wishlist || wishlist.length === 0) {
+          list.innerHTML = '';
+          empty.classList.remove('hidden');
+        } else {
+          empty.classList.add('hidden');
+          list.innerHTML = wishlist.map(w => `
+            <div class="wine-item" onclick="showWishlistDetail('${w.id}')">
+              ${w.image_url ? `<img src="${w.image_url}" class="wine-item-image">` : '<div class="wine-emoji">⭐</div>'}
+              <div class="wine-info">
+                <div class="wine-name">${w.name}</div>
+                <div class="wine-meta">${w.vintage ? w.vintage + ' • ' : ''}${w.region || 'Unknown'}</div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function showAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      showTab(currentTab);
+    }
+
+    function closeAddModalIfOverlay(e) {
+      if (e.target.classList.contains('modal-overlay')) closeAddModal();
+    }
+
+    function startManualEntry() {
+      closeAddModal();
+      currentImageData = null;
+      document.getElementById('imageContainer').innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      document.getElementById('wineName').value = '';
+      document.getElementById('wineVintage').value = '';
+      document.getElementById('wineProducer').value = '';
+      document.getElementById('wineRegion').value = '';
+      document.getElementById('wineVarietal').value = '';
+      document.getElementById('resultView').classList.remove('hidden');
+    }
+
+    async function startCamera(mode) {
+      currentMode = mode || 'add';
+      closeAddModal();
+      
+      if (mode === 'menu') {
+        document.getElementById('cameraTitle').textContent = 'Scan Wine Menu';
+        document.getElementById('cameraSubtitle').textContent = 'Capture the entire wine list';
+      } else {
+        document.getElementById('cameraTitle').textContent = mode === 'learn' ? 'Scan Wine Label' : 'Scan & Add Wine';
+        document.getElementById('cameraSubtitle').textContent = 'Center the label in frame';
       }
       
-      result.textContent = 'Processing image...';
+      document.getElementById('cameraView').classList.remove('hidden');
       
       try {
-        // Convert image to base64
-        const file = input.files[0];
-        const reader = new FileReader();
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({video: {facingMode}, audio: false});
+        document.getElementById('video').srcObject = stream;
         
-        const imageData = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+        // Start auto-capture countdown after 2 seconds
+        if (autoCaptureTimer) clearTimeout(autoCaptureTimer);
+        autoCaptureTimer = setTimeout(() => {
+          startCountdown();
+        }, 2000);
+      } catch (err) {
+        alert('Camera access denied');
+        closeAddModal();
+      }
+    }
+
+    function startCountdown() {
+      let count = 3;
+      const hint = document.getElementById('cameraHint');
+      
+      const countInterval = setInterval(() => {
+        if (count > 0) {
+          hint.textContent = `Capturing in ${count}...`;
+          hint.style.fontSize = '24px';
+          hint.style.fontWeight = 'bold';
+          count--;
+        } else {
+          clearInterval(countInterval);
+          capturePhoto();
+        }
+      }, 1000);
+    }
+
+    function closeCamera() {
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      if (autoCaptureTimer) { clearTimeout(autoCaptureTimer); autoCaptureTimer = null; }
+      showTab(currentTab);
+    }
+
+    async function flipCamera() {
+      if (autoCaptureTimer) { clearTimeout(autoCaptureTimer); autoCaptureTimer = null; }
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      await startCamera(currentMode);
+    }
+
+    async function capturePhoto() {
+      const v = document.getElementById('video');
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      currentImageData = c.toDataURL('image/jpeg', 0.9);
+      
+      if (currentMode === 'menu') {
+        await extractMenuWines(currentImageData);
+      } else if (currentMode === 'learn') {
+        await extractWineAndLearn(currentImageData);
+      } else {
+        await processImageForAdd(currentImageData);
+      }
+    }
+
+    async function processImageForAdd(img) {
+      document.getElementById('cameraView').classList.add('hidden');
+      document.getElementById('processingView').classList.remove('hidden');
+      document.getElementById('processingStatus').textContent = 'Analyzing label...';
+      
+      try {
+        // Step 1: Extract wine name from image
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ imageData: img })
         });
         
-        // Call Edge Function
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
+        }
+        
+        const extracted = await response.json();
+        console.log('Extracted from image:', extracted);
+        
+        // If extraction failed, open form with image for manual entry
+        if (!extracted || !extracted.name) {
+          console.warn('No wine name extracted, opening manual entry');
+          document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+          document.getElementById('wineName').value = '';
+          document.getElementById('wineVintage').value = '';
+          document.getElementById('processingView').classList.add('hidden');
+          document.getElementById('resultView').classList.remove('hidden');
+          alert('Could not automatically read the label. Please enter wine details manually.');
+          return;
+        }
+        
+        // Step 2: Do full wine lookup with flavor profiles
+        document.getElementById('processingStatus').textContent = 'Finding wine details...';
+        const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
+        console.log('Wine info found:', wineInfo);
+        
+        // Step 3: Populate form with all data
+        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+        document.getElementById('wineName').value = wineInfo?.name || extracted.name;
+        document.getElementById('wineVintage').value = wineInfo?.vintage || extracted.vintage || '';
+        document.getElementById('wineProducer').value = wineInfo?.producer || '';
+        document.getElementById('wineRegion').value = wineInfo?.region || '';
+        document.getElementById('wineVarietal').value = wineInfo?.varietal || '';
+        
+        // Auto-select wine type if available
+        if (wineInfo?.type) {
+          const typeValue = wineInfo.type.toLowerCase();
+          document.getElementById('wineType').value = typeValue;
+          toggleTanninField(); // Show/hide tannin based on type
+        }
+        
+        // Auto-populate flavor profiles if available
+        if (wineInfo?.body) document.getElementById('bodySlider').value = wineInfo.body;
+        if (wineInfo?.tannin) document.getElementById('tanninSlider').value = wineInfo.tannin;
+        if (wineInfo?.sweetness) document.getElementById('sweetnessSlider').value = wineInfo.sweetness;
+        if (wineInfo?.acidity) document.getElementById('aciditySlider').value = wineInfo.acidity;
+        
+        document.getElementById('processingView').classList.add('hidden');
+        document.getElementById('resultView').classList.remove('hidden');
+      } catch (err) {
+        console.error('Process error:', err);
+        // Still open form with image for manual entry
+        document.getElementById('imageContainer').innerHTML = `<img src="${img}" class="image-preview">`;
+        document.getElementById('wineName').value = '';
+        document.getElementById('processingView').classList.add('hidden');
+        document.getElementById('resultView').classList.remove('hidden');
+        alert('Scanning error: ' + err.message + '\n\nPlease enter wine details manually.');
+      }
+    }
+
+    async function extractWineAndLearn(imageData) {
+      document.getElementById('cameraView').classList.add('hidden');
+      document.getElementById('processingView').classList.remove('hidden');
+      document.getElementById('processingStatus').textContent = 'Reading label...';
+      
+      try {
+        // Step 1: Extract wine name and vintage from image
         const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
           method: 'POST',
           headers: {
@@ -119,20 +2431,830 @@
           body: JSON.stringify({ imageData })
         });
         
-        const data = await response.json();
-        
-        if (data.name) {
-          result.className = 'success';
-          result.textContent = 'SUCCESS! Extracted wine info:\n\n' + JSON.stringify(data, null, 2);
-        } else {
-          result.className = 'error';
-          result.textContent = 'ERROR: No wine name extracted\n\n' + JSON.stringify(data, null, 2);
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
         }
+        
+        const extracted = await response.json();
+        console.log('Extracted from image (Learn mode):', extracted);
+        
+        if (!extracted || !extracted.name) {
+          throw new Error('Could not read wine name from label');
+        }
+        
+        // Step 2: Do full wine lookup
+        document.getElementById('processingStatus').textContent = 'Finding wine details...';
+        const wineInfo = await hybridWineSearch(extracted.name, extracted.vintage);
+        console.log('Wine info found (Learn mode):', wineInfo);
+        
+        if (!wineInfo) {
+          throw new Error('Could not find wine information');
+        }
+        
+        // Step 3: Display learned wine info
+        learnedWineData = wineInfo;
+        learnedWineData.image = imageData;
+        displayLearnedWine();
       } catch (err) {
-        result.className = 'error';
-        result.textContent = 'ERROR: ' + err.message;
+        console.error('Learn error:', err);
+        alert('Could not identify wine: ' + err.message + '\n\nPlease try:\n1. Taking a clearer photo\n2. Using "Enter Manually" option');
+        closeAddModal();
       }
     }
+
+    function displayLearnedWine() {
+      document.getElementById('processingView').classList.add('hidden');
+      document.getElementById('learnResultView').classList.remove('hidden');
+      
+      const w = learnedWineData;
+      const imgContainer = document.getElementById('learnImageContainer');
+      
+      if (w.image) {
+        imgContainer.innerHTML = `<img src="${w.image}" class="image-preview">`;
+      } else {
+        imgContainer.innerHTML = '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      }
+
+      const sourceBadge = w.source === 'cached' ? '<span class="data-source-badge badge-cached">CACHED</span>' : 
+                          w.source === 'vivino' ? '<span class="data-source-badge badge-vivino">VIVINO</span>' : 
+                          '<span class="data-source-badge badge-openai">AI</span>';
+
+      document.getElementById('learnWineName').innerHTML = `${w.name || 'Unknown'} ${sourceBadge}`;
+
+      let infoHTML = '';
+      if (w.type) infoHTML += `<div style="margin-bottom: 16px;"><span class="wine-type-badge type-${w.type.toLowerCase()}">${w.type}</span></div>`;
+      
+      // Show Public Rating prominently at top
+      if (w.rating) {
+        infoHTML += `
+          <div class="form-group" style="background: #fafafa; padding: 16px; border-radius: 12px; border: 1px solid #f0f0f0;">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 28px; background: #f0f0f0; color: #1a1a1a;">${w.rating.toFixed(1)}</span>
+              <div style="font-size: 13px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize; font-size: 14px;">${w.source === 'vivino' ? 'Vivino' : w.source === 'openai' ? 'AI Estimate' : 'External'}</div>
+                <div>Average rating${w.ratings_count ? ` (${w.ratings_count.toLocaleString()} ratings)` : ''}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      if (w.description) infoHTML += `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${w.description}</div></div>`;
+      if (w.vintage) infoHTML += `<div class="form-group"><label>Vintage</label><div style="color: #666">${w.vintage}</div></div>`;
+      if (w.producer) infoHTML += `<div class="form-group"><label>Producer</label><div style="color: #666">${w.producer}</div></div>`;
+      if (w.region) infoHTML += `<div class="form-group"><label>Region</label><div style="color: #666">${w.region}</div></div>`;
+      if (w.varietal) infoHTML += `<div class="form-group"><label>Varietal</label><div style="color: #666">${w.varietal}</div></div>`;
+      if (w.tasting_notes || w.tastingNotes) infoHTML += `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${w.tasting_notes || w.tastingNotes}</div></div>`;
+      if (w.food_pairings || w.foodPairings) infoHTML += `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${w.food_pairings || w.foodPairings}</div></div>`;
+      if (w.price) infoHTML += `<div class="form-group"><label>Estimated Price</label><div style="color: #666">${w.price}</div></div>`;
+
+      document.getElementById('learnWineInfo').innerHTML = infoHTML;
+    }
+
+    async function addLearnedWineToCollection() {
+      if (!learnedWineData) return;
+      
+      const w = learnedWineData;
+      document.getElementById('imageContainer').innerHTML = w.image ? `<img src="${w.image}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>';
+      
+      document.getElementById('wineName').value = w.name || '';
+      document.getElementById('wineVintage').value = w.vintage || '';
+      document.getElementById('wineProducer').value = w.producer || '';
+      document.getElementById('wineRegion').value = w.region || '';
+      document.getElementById('wineVarietal').value = w.varietal || '';
+      
+      document.getElementById('learnResultView').classList.add('hidden');
+      document.getElementById('resultView').classList.remove('hidden');
+    }
+
+    async function saveToWishlist() {
+      if (!learnedWineData) return;
+      
+      // Upload image if exists
+      let imageUrl = null;
+      if (learnedWineData.image) {
+        imageUrl = await uploadWineImage(learnedWineData.image);
+      }
+      
+      const { error } = await supabase.from('wishlist').insert({
+        user_id: currentUser.id,
+        wine_cache_id: currentWineCacheId,
+        name: learnedWineData.name,
+        vintage: learnedWineData.vintage,
+        producer: learnedWineData.producer,
+        region: learnedWineData.region,
+        varietal: learnedWineData.varietal,
+        wine_type: learnedWineData.type,
+        tasting_notes: learnedWineData.tastingNotes,
+        food_pairings: learnedWineData.foodPairings,
+        price: learnedWineData.price,
+        description: learnedWineData.description,
+        image_url: imageUrl
+      });
+      
+      if (!error) {
+        alert('Wine saved!');
+        closeAddModal();
+      } else {
+        alert('Error saving: ' + error.message);
+      }
+    }
+
+    function cancelAddWine() {
+      currentImageData = null;
+      showTab(currentTab);
+    }
+
+    async function saveWine() {
+      const name = document.getElementById('wineName').value.trim();
+      const wineType = document.getElementById('wineType').value;
+      
+      if (!name) {
+        alert('Please enter a wine name');
+        return;
+      }
+      
+      if (!wineType) {
+        alert('Please select a wine type');
+        return;
+      }
+      
+      // Upload image
+      let imageUrl = null;
+      if (currentImageData) {
+        imageUrl = await uploadWineImage(currentImageData);
+      }
+      
+      // Get flavor profile values
+      const body = parseInt(document.getElementById('bodySlider').value);
+      const sweetness = parseInt(document.getElementById('sweetnessSlider').value);
+      const acidity = parseInt(document.getElementById('aciditySlider').value);
+      const tannin = wineType === 'red' ? parseInt(document.getElementById('tanninSlider').value) : null;
+      
+      const { data, error } = await supabase
+        .from('wines')
+        .insert({
+          user_id: currentUser.id,
+          wine_cache_id: currentWineCacheId,
+          name,
+          vintage: document.getElementById('wineVintage').value || null,
+          producer: document.getElementById('wineProducer').value || null,
+          region: document.getElementById('wineRegion').value || null,
+          varietal: document.getElementById('wineVarietal').value || null,
+          wine_type: wineType,
+          body,
+          tannin,
+          sweetness,
+          acidity,
+          image_url: imageUrl
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        alert('Error: ' + error.message);
+        return;
+      }
+      
+      currentWineId = data.id;
+      currentImageData = null;
+      
+      await supabase.from('activities').insert({
+        user_id: currentUser.id,
+        wine_id: data.id,
+        activity_type: 'added',
+        wine_name: name,
+        wine_vintage: data.vintage
+      });
+      
+      showSentimentPrompt();
+    }
+
+    function showSentimentPrompt() {
+      document.getElementById('sentimentWineName').textContent = document.getElementById('wineName').value;
+      document.getElementById('resultView').classList.add('hidden');
+      document.getElementById('sentimentView').classList.remove('hidden');
+    }
+
+    function toggleTanninField() {
+      const wineType = document.getElementById('wineType').value;
+      const tanninScale = document.getElementById('tanninScale');
+      
+      // Only show tannin for red wines
+      if (wineType === 'red') {
+        tanninScale.style.display = 'block';
+      } else {
+        tanninScale.style.display = 'none';
+      }
+    }
+
+    async function setSentiment(s) {
+      await supabase
+        .from('wines')
+        .update({ sentiment: s })
+        .eq('id', currentWineId);
+      
+      startComparisonRanking(s);
+    }
+
+    function skipRanking() {
+      showTab('profile');
+    }
+
+    async function startComparisonRanking(sentiment) {
+      const { data: currentWine } = await supabase
+        .from('wines')
+        .select('*')
+        .eq('id', currentWineId)
+        .single();
+      
+      // Only compare wines of the SAME TYPE (red vs red, white vs white, etc.)
+      const { data: sameWines } = await supabase
+        .from('wines')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('sentiment', sentiment)
+        .eq('wine_type', currentWine.wine_type) // Only same type!
+        .not('id', 'eq', currentWineId)
+        .not('score', 'is', null)
+        .order('score', { ascending: false });
+      
+      if (!sameWines || sameWines.length === 0) {
+        const score = sentiment === 'yes' ? 8.5 : sentiment === 'ok' ? 5.5 : 2.5;
+        await supabase
+          .from('wines')
+          .update({ score, comparisons: 0 })
+          .eq('id', currentWineId);
+        
+        await recalculateAllScores();
+        alert(`Ranked! Score: ${score}/10\nFirst ${currentWine.wine_type} wine in this category!`);
+        showTab('profile');
+        return;
+      }
+      
+      currentComparison = {
+        newWine: currentWine,
+        sentiment,
+        sortedWines: sameWines,
+        low: 0,
+        high: sameWines.length - 1,
+        comparisonCount: 0
+      };
+      
+      compareNextBinary();
+    }
+
+    function compareNextBinary() {
+      const {low, high} = currentComparison;
+      
+      if (low > high) {
+        finalizeBinaryRanking();
+        return;
+      }
+      
+      const mid = Math.floor((low + high) / 2);
+      currentComparison.currentMid = mid;
+      currentComparison.opponent = currentComparison.sortedWines[mid];
+      currentComparison.comparisonCount++;
+      
+      displayComparison();
+    }
+
+    function displayComparison() {
+      document.getElementById('sentimentView').classList.add('hidden');
+      document.getElementById('comparisonView').classList.remove('hidden');
+      
+      const {newWine, opponent} = currentComparison;
+      document.getElementById('comparisonOptions').innerHTML = `
+        <div class="wine-comparison-card" onclick="selectWinner('new')">
+          ${newWine.image_url ? `<img src="${newWine.image_url}">` : '<div class="wine-icon-large">🍷</div>'}
+          <h3>${newWine.name}</h3>
+          <p class="vintage">${newWine.vintage || 'N/A'}</p>
+        </div>
+        <div class="wine-comparison-card" onclick="selectWinner('opponent')">
+          ${opponent.image_url ? `<img src="${opponent.image_url}">` : '<div class="wine-icon-large">🍷</div>'}
+          <h3>${opponent.name}</h3>
+          <p class="vintage">${opponent.vintage || 'N/A'} • ${opponent.score.toFixed(1)}</p>
+        </div>
+      `;
+    }
+
+    function selectWinner(winner) {
+      const {currentMid} = currentComparison;
+      
+      if (winner === 'new') {
+        currentComparison.high = currentMid - 1;
+      } else {
+        currentComparison.low = currentMid + 1;
+      }
+      
+      compareNextBinary();
+    }
+
+    async function finalizeBinaryRanking() {
+      const {newWine, sentiment, sortedWines, low, comparisonCount} = currentComparison;
+      
+      const maxScore = sentiment === 'yes' ? 10.0 : sentiment === 'ok' ? 7.0 : 4.0;
+      const minScore = sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.1 : 1.0;
+      
+      let score;
+      if (low === 0) {
+        score = maxScore;
+      } else if (low >= sortedWines.length) {
+        score = minScore;
+      } else {
+        const above = sortedWines[low - 1].score;
+        const below = sortedWines[low].score;
+        score = (above + below) / 2;
+      }
+      
+      await supabase
+        .from('wines')
+        .update({ score, comparisons: comparisonCount })
+        .eq('id', currentWineId);
+      
+      await recalculateAllScores();
+      await supabase.from('activities').insert({
+        user_id: currentUser.id,
+        wine_id: currentWineId,
+        activity_type: 'rated',
+        wine_name: newWine.name,
+        wine_vintage: newWine.vintage,
+        score,
+        sentiment
+      });
+      
+      document.getElementById('comparisonView').classList.add('hidden');
+      alert(`Ranked! Score: ${score.toFixed(1)}/10`);
+      showTab('profile');
+    }
+
+    async function recalculateAllScores() {
+      for (const sentiment of ['yes', 'ok', 'no']) {
+        const { data: wines } = await supabase
+          .from('wines')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .eq('sentiment', sentiment)
+          .not('score', 'is', null)
+          .order('score', { ascending: false });
+        
+        if (!wines || wines.length === 0) continue;
+        
+        const max = sentiment === 'yes' ? 10.0 : sentiment === 'ok' ? 7.0 : 4.0;
+        const min = sentiment === 'yes' ? 7.0 : sentiment === 'ok' ? 4.1 : 1.0;
+        
+        if (wines.length === 1) {
+          await supabase.from('wines').update({ score: max }).eq('id', wines[0].id);
+        } else {
+          const step = (max - min) / (wines.length - 1);
+          for (let i = 0; i < wines.length; i++) {
+            await supabase.from('wines').update({ score: max - (i * step) }).eq('id', wines[i].id);
+          }
+        }
+      }
+    }
+
+    async function finishRanking() {
+      showTab('profile');
+    }
+
+    async function showDetail(id) {
+      const { data: wine } = await supabase
+        .from('wines')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      // Get public ratings from cache if available
+      let publicRating = null;
+      let publicSource = null;
+      if (wine.wine_cache_id) {
+        const { data: cached } = await supabase
+          .from('wine_cache')
+          .select('rating, ratings_count, data_source')
+          .eq('id', wine.wine_cache_id)
+          .single();
+        
+        if (cached && cached.rating) {
+          publicRating = cached.rating;
+          publicSource = cached.data_source;
+        }
+      }
+      
+      const sent = {'yes': '😍 Loved It', 'ok': '😊 It Was OK', 'no': '😐 Didn\'t Like It'};
+      
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('detailView').classList.remove('hidden');
+      
+      document.getElementById('detailCard').innerHTML = `
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">🍷</div></div>'}
+        <h2>
+          ${wine.wine_type ? `<span class="wine-type-badge type-${wine.wine_type}">${wine.wine_type}</span>` : ''}
+          ${wine.name}
+        </h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        
+        ${publicRating ? `
+          <div class="form-group">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 24px; background: #f0f0f0; color: #1a1a1a;">${publicRating.toFixed(1)}</span>
+              <div style="font-size: 12px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize;">${publicSource || 'External'}</div>
+                <div>Average rating</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
+        ${wine.body || wine.sweetness || wine.acidity || wine.tannin ? `
+          <div class="flavor-profile">
+            <h3>Flavor Profile</h3>
+            ${wine.body ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Light</span>
+                  <span style="font-weight: 600;">Body</span>
+                  <span>Bold</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.body - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.tannin && wine.wine_type === 'red' ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Smooth</span>
+                  <span style="font-weight: 600;">Tannin</span>
+                  <span>Tannic</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.tannin - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.sweetness ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Dry</span>
+                  <span style="font-weight: 600;">Sweetness</span>
+                  <span>Sweet</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.sweetness - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${wine.acidity ? `
+              <div class="flavor-scale">
+                <div class="flavor-scale-label">
+                  <span>Soft</span>
+                  <span style="font-weight: 600;">Acidity</span>
+                  <span>Acidic</span>
+                </div>
+                <div class="flavor-scale-bar">
+                  <div class="flavor-scale-marker" style="left: ${(wine.acidity - 1) * 25}%"></div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+        
+        <div class="form-group">
+          <label>Your Grapevine Rating</label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="rank-badge ${!wine.score ? 'unranked' : ''}" style="font-size: 24px;">${wine.score ? wine.score.toFixed(1) : 'Not yet rated'}</span>
+            ${wine.sentiment ? `<span style="font-size: 18px;">${sent[wine.sentiment]}</span>` : ''}
+          </div>
+          ${wine.comparisons ? `<div class="help-text">Based on ${wine.comparisons} comparison${wine.comparisons !== 1 ? 's' : ''}</div>` : ''}
+        </div>
+        <div class="form-group">
+          <label>Tasting Notes</label>
+          <textarea id="wineNotes" placeholder="Add notes...">${wine.notes || ''}</textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveNotes('${id}')">💾 Save Notes</button>
+          <button class="btn btn-danger" onclick="deleteWine('${id}')">🗑️ Delete</button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="backToProfile()">Back</button>
+      `;
+    }
+
+    async function showWishlistDetail(id) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (!wine) return;
+      
+      // Get public ratings from cache if available
+      let publicRating = null;
+      let publicSource = null;
+      if (wine.wine_cache_id) {
+        const { data: cached } = await supabase
+          .from('wine_cache')
+          .select('rating, ratings_count, data_source')
+          .eq('id', wine.wine_cache_id)
+          .single();
+        
+        if (cached && cached.rating) {
+          publicRating = cached.rating;
+          publicSource = cached.data_source;
+        }
+      }
+      
+      document.getElementById('profileView').classList.add('hidden');
+      document.getElementById('wishlistDetailView').classList.remove('hidden');
+      
+      document.getElementById('wishlistDetailCard').innerHTML = `
+        ${wine.image_url ? `<img src="${wine.image_url}" class="image-preview">` : '<div class="image-placeholder"><div class="icon">⭐</div></div>'}
+        <h2>${wine.name}</h2>
+        <p class="subtitle">${wine.vintage || 'Vintage not specified'}</p>
+        ${wine.wine_type ? `<div style="margin-bottom: 16px;"><span class="wine-type-badge type-${wine.wine_type}">${wine.wine_type}</span></div>` : ''}
+        
+        ${publicRating ? `
+          <div class="form-group">
+            <label>Public Rating</label>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-badge" style="font-size: 24px; background: #f0f0f0; color: #1a1a1a;">${publicRating.toFixed(1)}</span>
+              <div style="font-size: 12px; color: #999;">
+                <div style="font-weight: 600; color: #666; text-transform: capitalize;">${publicSource || 'External'}</div>
+                <div>Average rating</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
+        ${wine.description ? `<div class="form-group"><label>About</label><div style="color: #1a1a1a;">${wine.description}</div></div>` : ''}
+        ${wine.producer ? `<div class="form-group"><label>Producer</label><div style="color: #666">${wine.producer}</div></div>` : ''}
+        ${wine.region ? `<div class="form-group"><label>Region</label><div style="color: #666">${wine.region}</div></div>` : ''}
+        ${wine.varietal ? `<div class="form-group"><label>Varietal</label><div style="color: #666">${wine.varietal}</div></div>` : ''}
+        ${wine.tasting_notes ? `<div class="form-group"><label>Tasting Notes</label><div style="color: #1a1a1a; background: #fafafa; padding: 12px; border-radius: 8px;">${wine.tasting_notes}</div></div>` : ''}
+        ${wine.food_pairings ? `<div class="form-group"><label>Food Pairings</label><div style="color: #666">${wine.food_pairings}</div></div>` : ''}
+        ${wine.price ? `<div class="form-group"><label>Estimated Price</label><div style="color: #666">${wine.price}</div></div>` : ''}
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addWishlistWineToCollection('${id}')">
+            <span>➕</span><span>Add to Collection</span>
+          </button>
+          <button class="btn btn-danger" onclick="deleteWishlistWine('${id}')">🗑️ Remove</button>
+        </div>
+        <div style="height: 12px"></div>
+        <button class="btn btn-secondary" onclick="backToProfile()">Back</button>
+      `;
+    }
+
+    async function addWishlistWineToCollection(wishlistId) {
+      const { data: wine } = await supabase
+        .from('wishlist')
+        .select('*')
+        .eq('id', wishlistId)
+        .single();
+      
+      if (!wine) return;
+      
+      const { data, error } = await supabase
+        .from('wines')
+        .insert({
+          user_id: currentUser.id,
+          wine_cache_id: wine.wine_cache_id,
+          name: wine.name,
+          vintage: wine.vintage,
+          producer: wine.producer,
+          region: wine.region,
+          varietal: wine.varietal,
+          image_url: wine.image_url
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        alert('Error adding wine: ' + error.message);
+        return;
+      }
+      
+      currentWineId = data.id;
+      
+      await supabase.from('activities').insert({
+        user_id: currentUser.id,
+        wine_id: data.id,
+        activity_type: 'added',
+        wine_name: wine.name,
+        wine_vintage: wine.vintage
+      });
+      
+      // Delete from wishlist
+      await supabase.from('wishlist').delete().eq('id', wishlistId);
+      
+      alert('Wine added to collection!');
+      document.getElementById('wishlistDetailView').classList.add('hidden');
+      showSentimentPrompt();
+    }
+
+    async function deleteWishlistWine(id) {
+      if (confirm('Remove from saved wines?')) {
+        await supabase.from('wishlist').delete().eq('id', id);
+        document.getElementById('wishlistDetailView').classList.add('hidden');
+        showTab('profile');
+        showProfileTab('saved');
+      }
+    }
+
+    function backToProfile() {
+      document.getElementById('detailView').classList.add('hidden');
+      showTab('profile');
+    }
+
+    async function saveNotes(id) {
+      const notes = document.getElementById('wineNotes').value;
+      await supabase.from('wines').update({ notes }).eq('id', id);
+      alert('Notes saved!');
+    }
+
+    async function deleteWine(id) {
+      if (confirm('Delete this wine?')) {
+        await supabase.from('wines').delete().eq('id', id);
+        backToProfile();
+        showProfileTab('collection');
+      }
+    }
+
+    function showSettings() {
+      if (!currentProfile) return;
+      
+      document.getElementById('settingsDisplayName').value = currentProfile.display_name || '';
+      document.getElementById('settingsBio').value = currentProfile.bio || '';
+      document.getElementById('settingsView').classList.remove('hidden');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsView').classList.add('hidden');
+      document.getElementById('profileView').classList.remove('hidden');
+    }
+
+    async function saveProfileSettings() {
+      const displayName = document.getElementById('settingsDisplayName').value.trim();
+      const bio = document.getElementById('settingsBio').value.trim();
+      
+      await supabase
+        .from('profiles')
+        .update({ display_name: displayName, bio })
+        .eq('id', currentUser.id);
+      
+      currentProfile.display_name = displayName;
+      currentProfile.bio = bio;
+      
+      alert('Profile updated!');
+      closeSettings();
+      await loadUserData();
+    }
+
+    async function extractMenuWines(imageData) {
+      document.getElementById('cameraView').classList.add('hidden');
+      document.getElementById('processingView').classList.remove('hidden');
+      document.getElementById('processingStatus').textContent = 'Reading menu...';
+      
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ 
+            imageData,
+            extractMenu: true 
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Edge Function error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Menu extraction result:', result);
+        
+        // Edge Function returns { wines: [...] } for menu extraction
+        if (result.wines && result.wines.length > 0) {
+          menuWines = result.wines;
+          displayMenuWines();
+        } else {
+          throw new Error('No wines found on menu');
+        }
+      } catch (err) {
+        console.error('Menu extraction error:', err);
+        alert('Could not read menu: ' + err.message + '\n\nPlease ensure photo shows wine list clearly.');
+        closeAddModal();
+      }
+    }
+
+    function displayMenuWines() {
+      document.getElementById('processingView').classList.add('hidden');
+      document.getElementById('menuResultView').classList.remove('hidden');
+      
+      const list = document.getElementById('menuWineList');
+      
+      list.innerHTML = menuWines.map((w, index) => {
+        const displayPrice = w.price || w.bottlePrice || w.glassPrice || 'Price not listed';
+        const priceDetail = w.glassPrice && w.bottlePrice 
+          ? `Glass: ${w.glassPrice} / Bottle: ${w.bottlePrice}`
+          : '';
+        
+        return `
+          <div class="wine-item" onclick="learnAboutMenuWine(${index})">
+            <div class="wine-emoji">🍽️</div>
+            <div class="wine-info">
+              <div class="wine-name">${w.name}</div>
+              <div class="wine-meta">
+                ${w.vintage ? w.vintage : 'NV'}
+                ${w.producer ? ' • ' + w.producer : ''}
+              </div>
+              <div class="wine-meta" style="color: #8B3A42; font-weight: 600; margin-top: 4px;">
+                ${displayPrice}
+                ${priceDetail ? `<div style="font-size: 12px; color: #999;">${priceDetail}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function learnAboutMenuWine(index) {
+      const menuWine = menuWines[index];
+      
+      document.getElementById('menuResultView').classList.add('hidden');
+      document.getElementById('processingView').classList.remove('hidden');
+      document.getElementById('processingStatus').textContent = 'Getting wine details...';
+      
+      try {
+        const wineName = menuWine.name;
+        const vintage = menuWine.vintage || '';
+        
+        // Check cache first
+        const cached = await checkWineCache(wineName, vintage);
+        let wineData = null;
+        
+        if (cached) {
+          wineData = cached;
+        } else {
+          // Try Vivino
+          try {
+            wineData = await searchVivino(wineName, vintage);
+            if (wineData) {
+              wineData.source = 'vivino';
+              await saveToWineCache(wineName, vintage, wineData);
+            }
+          } catch (err) {
+            console.log('Vivino failed');
+          }
+          
+          // Fallback to OpenAI
+          if (!wineData) {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/wine-search`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify({ wineName, vintage })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+              wineData = result.data;
+              wineData.source = 'openai';
+              await saveToWineCache(wineName, vintage, wineData);
+            }
+          }
+        }
+        
+        if (wineData) {
+          learnedWineData = wineData;
+          learnedWineData.menuPrice = menuWine.price || menuWine.bottlePrice || null;
+          learnedWineData.glassPrice = menuWine.glassPrice || null;
+          learnedWineData.bottlePrice = menuWine.bottlePrice || null;
+          displayLearnedWine();
+        } else {
+          throw new Error('Could not find wine info');
+        }
+      } catch (err) {
+        console.error('Menu wine error:', err);
+        alert('Could not get details for this wine');
+        displayMenuWines();
+      }
+    }
+
+    initializeApp();
   </script>
 </body>
 </html>
